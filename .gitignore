@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Personal notes that aren't ready to be checked in. To be spanned branches
+.status_notes/raw_notes.md
+.status_notes/inprogress/
