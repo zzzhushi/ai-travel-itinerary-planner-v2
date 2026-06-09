@@ -69,6 +69,20 @@ When domain relationships are being discussed, stress-test them with specific sc
 
 When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
 
+### Probe for missing scope — don't wait for it
+
+Grilling goes depth-first down branches you already know, so it can miss whole *missing* branches. It is not the user's job to list every requirement up front — surface the gaps yourself. Periodically step out of the current branch and run a quick coverage sweep:
+
+- **Role-play** the flow as the primary user AND an adjacent domain expert (infer both from the project — e.g. a travel planner implies a traveller and a travel agent), plus a returning power user.
+- **Checklist** the commonly-forgotten categories: editing/undo, multiplicity & scale, time / fixed anchors, money, error & edge states, import/export, personalisation, accessibility, multi-user.
+- **Pre-mortem:** "after a few real uses, what will be missing?" / "what gap makes this useless in practice?"
+
+Raise the strongest missing candidates as new questions — each with a recommended answer — then triage into now / later. Keep it proportional: surface a few, offer to go deeper rather than sweeping every category every time.
+
+### Maintain a Future Requirements parking lot
+
+Deferred ideas must not be lost. Capture every candidate that isn't being built now in a **Future Requirements** parking lot — a `docs/FUTURE.md`, or a "Future Requirements" section in the project's PRD — updated inline the same way you update CONTEXT.md and ADRs. Give each a one-line verdict (now / next / later / no) and where it would plug in.
+
 ### Update CONTEXT.md inline
 
 When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](./CONTEXT-FORMAT.md).

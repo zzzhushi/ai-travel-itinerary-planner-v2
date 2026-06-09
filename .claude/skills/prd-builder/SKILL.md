@@ -156,6 +156,13 @@ Consult `references/metrics_frameworks.md` for detailed guidance on each framewo
 - Manages stakeholder expectations
 - Can include "future considerations"
 
+**Future Requirements parking lot:**
+- Every candidate surfaced in Phase 1.5 (or later) that isn't in the MVP goes here — never
+  discard a deferred idea, park it.
+- Give each a one-line verdict: **MVP / Next / Later / No**, plus a one-line disposition
+  (where it would plug in, or why it's deferred). A compact table works well.
+- This is the durable home for "good idea, not now" so the next session can pick it up.
+
 ### Success Metrics Guidelines
 
 **Choose Metrics That:**
