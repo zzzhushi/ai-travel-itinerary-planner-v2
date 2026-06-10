@@ -322,7 +322,7 @@ hallucination rate is observable.
 
 **No autonomous agents / tool-loops.** Those make call count unpredictable, are hard to
 test, and would threaten the free tier. Instead: **discrete, single-shot, schema-constrained
-calls at fixed pipeline stages.**
+calls at fixed pipeline stages.** Full prompts + output schemas live in `docs/prompts.md`.
 
 **Roles (2 real + 1 cosmetic):**
 - **Curator** — suggest candidate places per interest (+ duration, why, prelim rank). **1
