@@ -154,6 +154,40 @@ dependency we ruled out.
 A DB for app state (or Postgres anywhere) earns its place only with cross-trip queries,
 concurrency, or multi-user — all out of scope for v1.
 
+### 5.2 API surface (contract sketch)
+
+Contract designed now; **thin implementation at M3, full at the UI (M6)**. A local CLI can
+call the engine as a library — HTTP becomes load-bearing for the v2 UI. Building the FastAPI
+layer earlier is a deliberate choice justified by the OTel/observability learning goal and
+the request-id debugging affordance below, not a hard requirement for the CLI.
+
+The resource is a **trip** and its **itinerary versions**; endpoints are §4's flow exposed.
+Synchronous (operations are seconds); streaming/async deferred.
+
+| Method · Path | Intent | Internal calls | Returns |
+|---|---|---|---|
+| `POST /trips` | create from spec | validate → file store | `trip_id`, normalized spec |
+| `GET /trips/{id}` | view trip + state | file store | trip + rankings + current version ref |
+| `POST /trips/{id}/candidates` | suggest places to rank | Curator (Gemini, 1 batched) → geocode (Nominatim) → hours/duration resolvers → drop-&-backfill; Overpass on degrade | candidate pool/category w/ `source`+`confidence` |
+| `PATCH /trips/{id}/rankings` | submit ratings | persist → recompute `interest_score` | updated rankings |
+| `POST /trips/{id}/plan` | build itinerary | (cached or) ORS matrix ·1–2; Open-Meteo; deterministic scheduler | new version (JSON + Markdown) + explanations |
+| `POST /trips/{id}/refine` | tweak / regenerate | geometry levers → deterministic re-solve (0 LLM); content → Editor (Gemini, 1); locks → temp anchors | new version |
+| `GET /trips/{id}/versions` | history | file store | version list |
+| `POST /trips/{id}/versions/{v}/restore` | revert | file store | restored version |
+| `POST /trips/{id}/routes` | real street routes | ORS directions per leg → re-validate timing | itinerary w/ polylines + drift flags |
+| `GET /healthz` | liveness | — | ok |
+
+**Response envelope** — `request_id` **is** the OpenTelemetry `trace_id`, so a returned id is
+the handle to that request's full span tree (`runs/<trip>/<run>/trace.jsonl`):
+
+```
+success → { request_id, trace_id, trip_id, version,
+            data: {...},
+            diagnostics: { llm_calls, cache_hits, warnings: [...] } }
+error   → { request_id, trace_id,
+            error: { code, message, stage, detail } }
+```
+
 ---
 
 ## 6. External Data Sources
