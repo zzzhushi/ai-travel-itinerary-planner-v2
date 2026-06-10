@@ -18,7 +18,7 @@ preferences, and interests, suggests *real* places, lets the user rank them, and
 a geographically-sane, time-feasible, day-by-day itinerary the user can refine.
 
 ### Success definition (v1)
-- The engine **never violates** its hard correctness invariants (Section 13).
+- The engine **never violates** its hard correctness invariants (§13).
 - A user can go from an empty `trip.yaml` to a usable multi-day itinerary in one run.
 - Quality is judged by the **user** (human-in-the-loop), who refines via levers, locks,
   and feedback until satisfied. No automated quality scoring in v1.
@@ -37,7 +37,7 @@ a multi-tenant SaaS.
 - Trip length **1–14 days**.
 - Planning and **linking out** to places.
 
-**Out of scope (v1):** see Section 17.
+**Out of scope (v1):** see §17.
 
 ---
 
@@ -48,7 +48,7 @@ Hotels, flights, trains, weddings, pre-bought tickets, and manual buffers (e.g. 
 are all the **same primitive**:
 
 ```
-Anchor = { kind, location?, start?, end?/duration, day?, movability }
+Anchor = { kind, location?, start?, end?/duration, day?, movable }
 ```
 
 - **Fixed anchors** — immovable in time *and* day. Flight arrival/departure, ticketed
@@ -78,29 +78,30 @@ travel  = matrix(places)   # real ORS, or haversine fallback
 ```
 
 By the time the scheduler runs, **every preference is already a number or a constraint**.
-This is why the scheduler needs no LLM to honor preferences (see Section 8).
+This is why the scheduler needs no LLM to honor preferences (see §8).
 
 ---
 
 ## 4. End-to-End Flow
 
-1. **Input** — user fills `trip.yaml` (Section 12) or runs an interactive wizard that emits it.
+1. **Input** — user fills `trip.yaml` (§12) or runs an interactive wizard that emits it.
 2. **Curate** — one **batched** LLM call returns candidate places per interest category,
    each with a proposed `duration_min`, a `why` note, and a preliminary rank.
 3. **Resolve** — deterministic: geocode each place (Nominatim), enrich opening hours and
-   duration via the resolver chain (Section 9), drop-and-backfill hallucinations.
-4. **Rank** — user reviews candidates (colored by category), inspects details, and sets
-   their own ratings. `interest_score = blend(user_rating, llm_rank)`, user rating dominant.
-   (Auto-rank is the default/non-interactive path used by tests.)
+   duration via the resolver chain (§9), drop-and-backfill hallucinations.
+4. **Rank** — user reviews candidates (colored by category), inspects details, sets their
+   own ratings, and flags **must-sees**. `interest_score = blend(user_rating, llm_rank) ×
+   category_weight`, user rating dominant. (Auto-rank is the default/non-interactive path
+   used by tests.)
 5. **Schedule** — deterministic: anchor-aware clustering → day assignment → per-day route
-   ordering → constraint validation → explanation (Section 8).
+   ordering → constraint validation → explanation (§8).
 6. **Review & refine** — user reads the itinerary + the map + the explanations, then:
    - tweaks **geometry levers** (free, instant re-solve), or
    - **locks** good parts and **regenerates** a day/slot with structured + free-text feedback
      (metered LLM call), or
    - reverts to a previous **version**.
 7. **Finalize** — optional "Generate real routes" button fetches street polylines + exact
-   segment times for the chosen legs and re-validates timing (Section 7).
+   segment times for the chosen legs and re-validates timing (§7).
 
 ---
 
@@ -130,8 +131,10 @@ This is why the scheduler needs no LLM to honor preferences (see Section 8).
 
 - **"Local" = no hosted backend of ours.** External APIs are allowed if **free-tier with
   usable limits**. The only required secret is the **Gemini key**.
-- **CLI is a client of the API**, not a separate code path. NiceGUI (built on FastAPI)
-  slots onto the same API in v2.
+- **The engine is the core library; clients are thin.** The CLI calls the engine
+  **directly** (no HTTP needed); the FastAPI layer wraps the *same* engine for the v2
+  NiceGUI UI and for the OTel/request-id boundary. The diagram shows logical layering, not a
+  mandatory HTTP hop for the CLI.
 - **Adapters are cached and swappable** — enables deterministic tests, offline fallback,
   and clean upgrades (e.g. Nominatim → Google Places later).
 
@@ -149,7 +152,12 @@ dependency we ruled out.
 |---|---|---|
 | App state — `trip.yaml`, rankings, locks, **itinerary versions** | **Files** in a per-trip directory (`trip.yaml` + numbered JSON version snapshots) | Human-readable, git-diffable, trivially testable, matches "runs locally"; version history = revert by snapshot |
 | Response cache — LLM / geocode / hours / routing | **SQLite** (stdlib, single file) | Keyed lookups + TTL + hit-rate queries; still local/no-server; powers deterministic tests + offline fallback |
-| Diagnostics logs | **JSONL files** (Section 13.2) | Greppable, standard, simple; load into SQLite/DuckDB *ad hoc* for analysis — do **not** build a logging DB |
+| Diagnostics logs | **JSONL files** (§13.2) | Greppable, standard, simple; load into SQLite/DuckDB *ad hoc* for analysis — do **not** build a logging DB |
+
+**Layout.** `trips/<trip_id>/` holds the spec + numbered version snapshots;
+`runs/<trip_id>/<run_id>/` holds that run's `manifest.json` + `trace.jsonl`. Cache keys are
+**per-adapter** — geocode by query, matrix by coord-set, Curator by `(city, interests,
+prefs-hash)` — not one global key.
 
 A DB for app state (or Postgres anywhere) earns its place only with cross-trip queries,
 concurrency, or multi-user — all out of scope for v1.
@@ -177,8 +185,9 @@ Synchronous (operations are seconds); streaming/async deferred.
 | `POST /trips/{id}/routes` | real street routes | ORS directions per leg → re-validate timing | itinerary w/ polylines + drift flags |
 | `GET /healthz` | liveness | — | ok |
 
-**Response envelope** — `request_id` **is** the OpenTelemetry `trace_id`, so a returned id is
-the handle to that request's full span tree (`runs/<trip>/<run>/trace.jsonl`):
+**Response envelope.** One identifier, three names: the API `request_id`, the engine
+`run_id`, and the OpenTelemetry `trace_id` are the **same value**. A returned id is the
+handle to that request's full span tree (`runs/<trip_id>/<run_id>/trace.jsonl`):
 
 ```
 success → { request_id, trace_id, trip_id, version,
@@ -203,7 +212,7 @@ error   → { request_id, trace_id,
 | Weather | Open-Meteo (no key) | skip | drives indoor/outdoor demotion |
 
 > Free-tier ceilings drift — the implementation must **verify current quotas** and degrade
-> gracefully (Section 11), never hard-fail on quota.
+> gracefully (§11), never hard-fail on quota.
 
 ---
 
@@ -241,7 +250,7 @@ to N minutes").
 3. **Per-day selection + ordering** via greedy nearest-neighbor + local search (small TSP
    heuristic) from the hotel anchor, inserting travel time between consecutive stops.
 4. **Validate** against hard constraints; **move-then-drop** any place that can't fit.
-5. **Explain** every non-trivial decision (Section 8.4).
+5. **Explain** every non-trivial decision (§8.4).
 
 ### 8.2 Objective function (soft)
 ```
@@ -251,6 +260,12 @@ score =  w_interest · Σ(interest_score)
 ```
 Defaults encode the user's ranking: **interest > travel > pace**
 (e.g. `w_interest 0.5 / w_travel 0.3 / w_pace 0.2`).
+
+> **Three distinct "weights" — don't conflate:** (1) per-category `weight` in `trip.yaml`
+> scales how much a category contributes to a place's `interest_score`; (2) `interest_score`
+> (0–1) per place = `blend(user_rating, llm_rank) × category_weight`; (3) the global
+> coefficients `w_interest / w_travel / w_pace` (the tunable levers) trade the three soft
+> terms against each other. Only (3) are the "levers."
 
 > **Design tension recorded:** the stated core pain was "criss-crossing," but the user
 > ranked *interest match above travel tightness*. Accepted consequence: the tool will
@@ -263,7 +278,8 @@ Defaults encode the user's ranking: **interest > travel > pace**
 - No two activities overlap; travel time inserted between consecutive stops.
 - No activity scheduled outside its resolved opening hours (day-of-week aware).
 - Each day fits its `day_window`.
-- Pace within the user's stops/day preference.
+- Stops/day never exceed the pace **hard ceiling** (relaxed/balanced/packed → max stops).
+  Breathing room *within* that ceiling is the soft `overpacking_penalty` (§8.2), not a hard rule.
 
 **Soft (optimized, configurable):**
 - Meal slots (lunch/dinner; optionally coffee/dessert as a preference).
@@ -273,6 +289,9 @@ Defaults encode the user's ranking: **interest > travel > pace**
 
 **Must-sees** are *near-hard*: try to **move** to a day that fits; if impossible, **drop**
 and **surface the reason** to the user. Never silently swallowed.
+
+> **Budget & accessibility** are *captured* in the spec (`price_level`, `budget_per_day`)
+> but **enforcement is a fast-follow**, not wired into the v1 objective/constraints.
 
 ### 8.4 Explainability (a first-class feature, doubles as diagnostics)
 The itinerary surfaces *why*, not just *what*. Every drop / move / unverified place carries
@@ -400,7 +419,7 @@ network, deterministic. The engine must **never** violate:
 - No overlaps; travel time inserted; day fits `day_window`.
 - Every fixed anchor at its exact time/day, unmoved.
 - No activity outside resolved opening hours (day-of-week aware).
-- Pace within preference.
+- Stops/day never exceed the pace hard ceiling.
 - Every dropped place has a logged reason; every must-see is scheduled **or** surfaced as
   un-fittable with a reason.
 
@@ -459,10 +478,10 @@ Human-readable reasons are surfaced in the itinerary (§8.4); full machine detai
 
 ### 13.4 Documentation (hard requirement)
 - **README** — setup, obtaining a Gemini key, running the CLI, configuring `trip.yaml`.
-- **`trip.yaml` reference + worked example** (Section 12 is the seed).
+- **`trip.yaml` reference + worked example** (§12 is the seed).
 - **API docs** — FastAPI's auto-generated OpenAPI/Swagger, kept accurate via Pydantic schemas.
-- **Code docstrings** on engine modules; the **LLM↔scheduler contract** (Section 3.2) and the
-  **anchor model** (Section 3.1) documented as the load-bearing concepts.
+- **Code docstrings** on engine modules; the **LLM↔scheduler contract** (§3.2) and the
+  **anchor model** (§3.1) documented as the load-bearing concepts.
 - **Architecture overview** — this PRD plus a short top-level diagram in the README.
 
 ---
@@ -551,3 +570,5 @@ v1 = M0–M5 (engine + API + CLI, fully tested). v2 = M6 (UI).
 - Concrete pace → stops/day mapping (e.g. relaxed 3–4, balanced 5, packed 6–7) — tune in M1.
 - Whether per-slot regeneration is needed in v1 or per-day suffices (start per-day).
 - Default candidate over-fetch count per category (start ~8).
+- Version-history retention/pruning policy and its owner (keep-all in v1, or cap at N?).
+- How the user flags must-sees (a `rankings` field vs a per-interest list in the spec).
