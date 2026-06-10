@@ -144,7 +144,7 @@ This is why the scheduler needs no LLM to honor preferences (see §8).
 
 ### 5.1 Persistence & State
 
-Decided at strategy level here (it shapes M0); exact schemas/eviction/rotation defer to the
+Decided at strategy level here (it shapes V1); exact schemas/eviction/rotation defer to the
 milestone task-breakdown. **No server database** — that would reintroduce the hosted
 dependency we ruled out.
 
@@ -164,7 +164,7 @@ concurrency, or multi-user — all out of scope for v1.
 
 ### 5.2 API surface (contract sketch)
 
-Contract designed now; **thin implementation at M3, full at the UI (M6)**. A local CLI can
+Contract designed now; **built at V6 (refinement loop), consumed by the UI at V7**. A local CLI can
 call the engine as a library — HTTP becomes load-bearing for the v2 UI. Building the FastAPI
 layer earlier is a deliberate choice justified by the OTel/observability learning goal and
 the request-id debugging affordance below, not a hard requirement for the CLI.
@@ -517,22 +517,86 @@ just mirror the CLI).
 
 ---
 
-## 16. Milestones
+## 16. Milestones (vertical slices)
 
-- **M0 — Skeleton:** package layout, Pydantic schemas, `trip.yaml` loader, per-trip file
-  store + version snapshots, SQLite response cache, JSONL diagnostics logger, adapter
-  interfaces, CI with invariant-test harness.
-- **M1 — Engine core (deterministic):** anchors, clustering, two-tier travel, scheduler,
-  constraints, move-then-drop, explainer. Haversine travel. Full invariant tests.
-- **M2 — Curation + resolution:** Gemini Curator (batched, structured), Nominatim geocode,
-  hours/duration resolvers, drop-and-backfill, failure handling, deterministic fallback.
-- **M3 — FastAPI + CLI:** expose engine; interactive + auto rank; Markdown + JSON output.
-- **M4 — Real travel + weather:** ORS matrix, on-demand polylines + re-validation, Open-Meteo.
-- **M5 — Refinement loop:** geometry levers (free), content regen (metered), locks, versioning.
-- **M6 — NiceGUI UI:** map (colored/numbered by day), rating pane, drag-reorder, levers,
-  feedback, history.
+Each milestone is an **end-to-end, runnable increment**, not a layer. Build the thin path
+first, then deepen. **OpenTelemetry span instrumentation, invariant tests, and JSONL logging
+are a standing definition-of-done on every milestone**, not a one-time task.
 
-v1 = M0–M5 (engine + API + CLI, fully tested). v2 = M6 (UI).
+**MVP cut line:** **V1–V3** is already a genuinely useful planner (realistic, anchored,
+non-criss-crossing trips from the CLI). V4–V6 deepen quality/resilience/refinement; **V7 (UI)
+is optional/last**; V8 ships it.
+
+- **V1 — Walking skeleton: plan a trivial trip end-to-end.**
+  - *Exit:* From a minimal `trip.yaml` (city, dates, interests; no anchors), `plan trip.yaml`
+    emits a real, geocoded, day-by-day Markdown+JSON itinerary; the run writes a JSONL trace +
+    manifest; one invariant test passes in CI.
+  - *Tasks:* Package layout + CLI entry; Pydantic schemas + `trip.yaml` loader; Gemini
+    key/config; SQLite cache; OTel→JSONL logger; one Curator call; Nominatim geocode; naive
+    day-fill scheduler (no travel/anchors); Markdown+JSON output; invariant-test harness in CI.
+
+- **V2 — Geographically-sane days (kills criss-crossing).**
+  - *Exit:* Multi-day itineraries cluster by neighborhood; each day starts/ends at the hotel;
+    order minimizes travel (haversine two-tier); opening-hours, day-window and no-overlap
+    enforced; un-fittable places dropped with a readable reason. Invariant tests cover all hard
+    constraints.
+  - *Tasks:* Anchor-aware geo clustering; nearest-neighbor ordering from hotel; two-tier travel
+    (haversine + walk threshold); hours/duration resolver chains (source+confidence);
+    hard-constraint validation; move-then-drop; explainability layer; expand invariant tests.
+
+- **V3 — Anchors & realistic pacing.**
+  - *Exit:* A trip with a 6pm flight arrival (+buffers), a ticketed multi-hour activity, and a
+    fixed event schedules correctly around them; departure day truncates; meal slots,
+    time-of-day affinity and fatigue pacing apply. Tests cover anchor immovability and
+    day-1/last-day truncation.
+  - *Tasks:* Fixed/soft anchors + buffers; arrival/departure-day truncation; soft constraints
+    (meals, tod affinity, fatigue); objective function + default weights; multi-cluster day with
+    inter-cluster penalty; anchor invariant tests.
+
+- **V4 — Curation quality & resilience.**
+  - *Exit:* User can inspect/rate candidates and flag must-sees, and ratings change the plan;
+    over-fetch + drop-and-backfill keep categories full; with Gemini disabled the tool still
+    produces a real (Overpass) itinerary; cached LLM responses make tests deterministic;
+    `replay` reproduces a run from its run-dir.
+  - *Tasks:* Interactive + auto ranking; `interest_score` blend; must-see flag; over-fetch +
+    drop-and-backfill; full resolver fallbacks (Wikidata/Foursquare/LLM); LLM failure handling +
+    Overpass degrade; response cache/VCR tests; `replay` command + acceptance test.
+
+- **V5 — Travel-time accuracy & weather.**
+  - *Exit:* Scheduler uses the real ORS matrix when available (haversine fallback); rainy days
+    demote outdoor / promote indoor (Open-Meteo); an on-demand "real routes" action returns
+    street polylines and re-validates day timing, flagging drift. Existing tests stay green.
+  - *Tasks:* ORS matrix + haversine fallback; mode-aware long-hop routing; Open-Meteo weather
+    demotion; on-demand polyline endpoint + timing re-validation/drift flags; quota handling +
+    caching.
+
+- **V6 — Refinement loop & API.**
+  - *Exit:* Via FastAPI, the user can adjust geometry levers (instant, no LLM), regenerate a
+    day/slot with free-text + structured feedback (Editor), lock places (→ temp anchors), and
+    revert to a prior version; every response returns a `request_id` that resolves to its trace.
+  - *Tasks:* FastAPI + response envelope (`request_id`=`trace_id`); geometry-lever deterministic
+    re-solve; Editor content regeneration; locks as temp anchors; version snapshots + restore;
+    per-trip file-store versioning.
+
+- **V7 — Map UI (NiceGUI).**
+  - *Exit:* A local NiceGUI app shows the itinerary on a read-only Leaflet map (pins colored +
+    numbered by day), a category-colored rating pane that highlights the selected place on the
+    map, drag-to-reorder, lever sliders, a feedback box, and version history — all over the V6
+    API.
+  - *Tasks:* NiceGUI app on FastAPI; Leaflet map (colored/numbered by day); rating pane with map
+    highlight; drag-reorder list; lever sliders (free re-solve); feedback box (metered);
+    version-history UI; "generate real routes" button.
+
+- **V8 — Productionize & release.**
+  - *Exit:* A fresh clone goes install → configured key → first itinerary using only the README;
+    OpenAPI docs published; engine modules have docstrings; end-to-end smoke test green;
+    error/UX messages clear; logging event-catalog matches emitted spans.
+  - *Tasks:* Packaging/install (pyproject, entry point); `.env`/secrets handling; README +
+    `trip.yaml` reference; OpenAPI/docstrings (§13.4); end-to-end smoke test; error-message UX
+    pass; verify event-catalog vs emitted spans.
+
+**v1 product = V1–V6** (CLI + API + refinement, fully tested). **v2 = V7** (UI). **V8** is the
+release pass and can run partly in parallel.
 
 ---
 
@@ -567,7 +631,7 @@ v1 = M0–M5 (engine + API + CLI, fully tested). v2 = M6 (UI).
 ## 19. Open Questions
 
 - Exact ORS free-tier matrix/directions limits at build time (verify, set per-day call caps).
-- Concrete pace → stops/day mapping (e.g. relaxed 3–4, balanced 5, packed 6–7) — tune in M1.
+- Concrete pace → stops/day mapping (e.g. relaxed 3–4, balanced 5, packed 6–7) — tune in V2.
 - Whether per-slot regeneration is needed in v1 or per-day suffices (start per-day).
 - Default candidate over-fetch count per category (start ~8).
 - Version-history retention/pruning policy and its owner (keep-all in v1, or cap at N?).

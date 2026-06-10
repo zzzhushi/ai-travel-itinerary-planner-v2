@@ -23,10 +23,10 @@ Artifacts produced:
 
 ## Current state
 
-- **Phase:** planning complete; ready to start building **M0**.
+- **Phase:** planning complete; ready to start building **V1**.
 - **Repo:** only docs + skill files; no Python package, no tests yet.
 - **PRD status:** Draft v1, consistent. A handful of small open questions remain (PRD §19) —
-  none block M0–M1.
+  none block V1–V2.
 
 ---
 
@@ -54,20 +54,22 @@ Artifacts produced:
 
 ## Next steps (start here)
 
-**M0 — Skeleton** (per PRD §16):
-- Python 3.11+ package layout; Pydantic v2 schemas for `trip.yaml`, `Anchor`, `Place`,
-  `Preferences`, itinerary/version.
-- `trip.yaml` loader + validation.
-- Per-trip **file store** (`trips/<trip_id>/`) with numbered version snapshots.
+**V1 — Walking skeleton** (per PRD §16): the thin end-to-end path that *plans a trivial trip*,
+not just scaffolding. From a minimal `trip.yaml` → real geocoded Markdown+JSON itinerary.
+- Python 3.11+ package layout + CLI entry (`plan trip.yaml`); Pydantic v2 schemas for
+  `trip.yaml`, `Anchor`, `Place`, `Preferences`, itinerary/version.
+- `trip.yaml` loader + validation; Gemini key/config.
+- Per-trip **file store** (`trips/<trip_id>/`) with version snapshots.
 - **SQLite** response cache (per-adapter keys).
 - **OTel-backed JSONL logger** emitting the event catalog in `docs/logging.md`
   (`runs/<trip_id>/<run_id>/manifest.json` + `trace.jsonl`).
-- Adapter **interfaces** (Gemini, Nominatim, Overpass, ORS, Open-Meteo) — stubs/protocols only.
+- One **Curator** LLM call + **Nominatim** geocode; **naive day-fill** scheduler (no
+  travel/anchors yet); Markdown+JSON output.
 - CI + the **invariant-test harness** (fixtures with mocked geodata).
 
-Then **M1** (deterministic engine: anchors, clustering, two-tier travel via haversine,
-scheduler, constraints, move-then-drop, explainer) — this is the heart, and fully testable
-with zero external calls.
+Then **V2** (geographically-sane days: clustering, two-tier haversine travel, hotel-anchored
+ordering, hard constraints, move-then-drop, explainer) — the heart, fully testable with zero
+external calls. Anchors + pacing follow in **V3**.
 
 ---
 
@@ -81,10 +83,3 @@ with zero external calls.
 - Exactly how/where the user flags must-sees in the spec.
 
 ---
-
-## Context notes
-
-- `.status_notes/inprogress/prd/` is a **benchmark harness** scoring PRD-generation runs —
-  not part of the product. The product spec lives in `/docs`.
-- Use the **GitHub identity** (`zzzhushi` / `9770912+zzzhushi@users.noreply.github.com`) in
-  project files and commits — never the personal Claude-account email.
