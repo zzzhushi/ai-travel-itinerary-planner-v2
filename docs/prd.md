@@ -136,7 +136,8 @@ This is why the scheduler needs no LLM to honor preferences (see Section 8).
   and clean upgrades (e.g. Nominatim → Google Places later).
 
 **Tech:** Python 3.11+, FastAPI + uvicorn, Pydantic v2 (schemas/validation), `pytest`,
-`gemini-2.0-flash-lite` default model, NiceGUI + Leaflet (v2 UI).
+`gemini-2.0-flash-lite` default model, OpenTelemetry SDK + FastAPI instrumentation
+(diagnostics, §13.2), NiceGUI + Leaflet (v2 UI).
 
 ### 5.1 Persistence & State
 
@@ -376,12 +377,47 @@ drop-and-backfill).
 **Quality:** judged by the user via the refine loop. **LLM-as-judge eval is out of scope.**
 Golden-output tests only for pure-deterministic transforms (clustering, route ordering).
 
-### 13.2 Diagnostics logging (hard requirement)
-Structured logs (JSON lines) capturing: every external call (service, latency, cache hit,
-quota state), every resolver decision (`source` + `confidence`), every scheduler
-drop/move/penalty with reason, hallucination drop rate, and per-run LLM call count.
-Human-readable reasons are surfaced in the itinerary (Section 8.4); machine detail goes to
-the log.
+### 13.2 Diagnostics — agent-debuggable logging (hard requirement)
+
+**Design target:** from a **run directory alone** (no re-run, no original session), a coding
+agent must be able to (1) **localize** a failure to a pipeline stage, (2) **explain** any
+decision from the data behind it, and (3) **deterministically replay** the run. Ordinary
+"human-skimmable" logging is not sufficient.
+
+Built on **OpenTelemetry** (traces as the primary signal; FastAPI auto-instrumented). Stages
+→ spans, decisions → span events, provenance → span attributes. A **custom JSONL exporter**
+maps spans to the agent-debuggable schema below (see `docs/logging.md`); an optional OTLP
+exporter can push to a local Jaeger/Tempo container. Replay (capability #4) stays independent
+of telemetry — its source is the manifest + cache.
+
+Structured **JSONL**, one event per line, stable schema. Required capabilities:
+
+1. **Localize** — every line carries `run_id` / `trip_id` / `version` + `stage` + `component`
+   + a stable `event` code. Each pipeline boundary (curate → resolve → cluster → schedule)
+   logs its **input and output** (value or hash) so a bug bisects to the stage that caused it.
+2. **Explain with provenance** — decision events carry the *data behind the verdict*, e.g.
+   `dropped X: must_see, open Tue only, Tue saturated by anchor 'Disneyland', Δobjective −0.4`
+   — the machine twin of the human explanation (§8.4). Also: resolver decisions (`source` +
+   `confidence`), scheduler moves/drops/penalties, hallucination drop rate, per-run LLM count.
+3. **Trace external calls** — service, endpoint, params (or hash), latency, status, **cache
+   hit/miss**, retry count, quota state, and **fallback taken** (`Gemini 429 → cache`,
+   `→ Overpass degrade`).
+4. **Replay** — a **run manifest** (config snapshot, model id, **prompt version/hash**, RNG
+   seeds) + the SQLite response cache lets the engine re-run the trip **offline** and
+   reproduce the same itinerary and decision trace. This reuses the existing cache + the
+   deterministic engine — replay and test-determinism are the *same* mechanism.
+5. **Diff** — manifest model/prompt/config/code versions reveal *what changed* when output
+   changes.
+
+**Meta:** a documented **event catalog** (`docs/logging.md`) lists every `event` code + its
+fields; standard levels (DEBUG/INFO/WARN/ERROR) and filtering by `run_id`/`stage`; errors
+always carry the failing input + full context.
+
+**Acceptance bar (testable):** *given only a run directory (manifest + JSONL trace + cache),
+`replay` reproduces the identical itinerary and decision log offline.* This single test both
+proves the logs are debug-complete and serves as the engine-determinism guarantee.
+
+Human-readable reasons are surfaced in the itinerary (§8.4); full machine detail goes to the log.
 
 ### 13.3 Performance
 - Geometry re-solve (lever change): **sub-second**, no network.
