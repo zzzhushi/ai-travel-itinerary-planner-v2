@@ -138,6 +138,21 @@ This is why the scheduler needs no LLM to honor preferences (see Section 8).
 **Tech:** Python 3.11+, FastAPI + uvicorn, Pydantic v2 (schemas/validation), `pytest`,
 `gemini-2.0-flash-lite` default model, NiceGUI + Leaflet (v2 UI).
 
+### 5.1 Persistence & State
+
+Decided at strategy level here (it shapes M0); exact schemas/eviction/rotation defer to the
+milestone task-breakdown. **No server database** — that would reintroduce the hosted
+dependency we ruled out.
+
+| What | Store | Why |
+|---|---|---|
+| App state — `trip.yaml`, rankings, locks, **itinerary versions** | **Files** in a per-trip directory (`trip.yaml` + numbered JSON version snapshots) | Human-readable, git-diffable, trivially testable, matches "runs locally"; version history = revert by snapshot |
+| Response cache — LLM / geocode / hours / routing | **SQLite** (stdlib, single file) | Keyed lookups + TTL + hit-rate queries; still local/no-server; powers deterministic tests + offline fallback |
+| Diagnostics logs | **JSONL files** (Section 13.2) | Greppable, standard, simple; load into SQLite/DuckDB *ad hoc* for analysis — do **not** build a logging DB |
+
+A DB for app state (or Postgres anywhere) earns its place only with cross-trip queries,
+concurrency, or multi-user — all out of scope for v1.
+
 ---
 
 ## 6. External Data Sources
@@ -372,6 +387,14 @@ the log.
 - Geometry re-solve (lever change): **sub-second**, no network.
 - Baseline plan: bounded by 1 LLM call + 1–2 matrix calls + cached geocoding.
 
+### 13.4 Documentation (hard requirement)
+- **README** — setup, obtaining a Gemini key, running the CLI, configuring `trip.yaml`.
+- **`trip.yaml` reference + worked example** (Section 12 is the seed).
+- **API docs** — FastAPI's auto-generated OpenAPI/Swagger, kept accurate via Pydantic schemas.
+- **Code docstrings** on engine modules; the **LLM↔scheduler contract** (Section 3.2) and the
+  **anchor model** (Section 3.1) documented as the load-bearing concepts.
+- **Architecture overview** — this PRD plus a short top-level diagram in the README.
+
 ---
 
 ## 14. UI
@@ -407,8 +430,9 @@ just mirror the CLI).
 
 ## 16. Milestones
 
-- **M0 — Skeleton:** package layout, Pydantic schemas, `trip.yaml` loader, adapter
-  interfaces + cache, diagnostics logging, CI with invariant-test harness.
+- **M0 — Skeleton:** package layout, Pydantic schemas, `trip.yaml` loader, per-trip file
+  store + version snapshots, SQLite response cache, JSONL diagnostics logger, adapter
+  interfaces, CI with invariant-test harness.
 - **M1 — Engine core (deterministic):** anchors, clustering, two-tier travel, scheduler,
   constraints, move-then-drop, explainer. Haversine travel. Full invariant tests.
 - **M2 — Curation + resolution:** Gemini Curator (batched, structured), Nominatim geocode,
