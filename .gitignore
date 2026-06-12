@@ -218,6 +218,12 @@ __marimo__/
 .streamlit/secrets.toml
 
 
-# Personal notes that aren't ready to be checked in. To be spanned branches validating. 
+# Personal notes that aren't ready to be checked in. To be spanned branches validating.
 .status_notes/raw_notes.md
 .status_notes/inprogress/
+
+# Per-machine Claude Code settings (shared settings live in .claude/settings.json)
+.claude/settings.local.json
+
+# Local-LLM experiment data (read by /retro on this machine)
+.local-llm-log.jsonl
