@@ -230,3 +230,9 @@ __marimo__/
 
 # Bash audit log written by the pre_bash_guard hook
 .claude/audit.log
+
+# Runtime logs (observability writes JSON lines here)
+logs/
+
+# Coverage JSON report (the ratchet baseline .coverage-baseline IS committed)
+coverage.json
