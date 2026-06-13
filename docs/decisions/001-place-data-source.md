@@ -1,6 +1,6 @@
 # ADR-001: Use a structured place-data API as source of truth, with the LLM as curator
 
-Status: proposed · Date: 2026-06-12
+Status: accepted · Date: 2026-06-12
 
 ## Context
 
@@ -24,7 +24,7 @@ The planner must show *real* places (existence, coordinates, opening hours, rati
 
 Use **Google Places API (New) as the source of truth** for place existence, coordinates, hours, rating, and price. Use **Gemini as the discovery/curation brain** (optionally with Maps grounding to propose places and return place IDs, which are then hydrated via Places Details). Keep **OSM/Overpass as the degradation fallback** and as the one source whose data may be durably cached. Travel time in v1 is local haversine (no API); Google Routes is a v2 upgrade.
 
-This choice is **proposed**, to be ratified at the `/milestones` architecture gate after live-pricing verification.
+This choice is **accepted** at the `/milestones` architecture gate; live-pricing verification remains a blocking pre-build task (tracked in the PRD open questions), and an OSM-only fallback architecture is the recorded escape hatch if Google cost/ToS friction proves too high.
 
 ## Consequences
 
