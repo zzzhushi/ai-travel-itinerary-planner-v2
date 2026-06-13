@@ -13,7 +13,7 @@ A traveller planning their own trip to a single city for a few days. Plans for t
 
 The product works if, for a real upcoming trip, it:
 
-1. Produces a day-by-day schedule where **each day stays geographically compact** (no avoidable criss-crossing) and **starts/ends near the user's lodging**.
+1. Produces a day-by-day schedule where **each day stays geographically compact** (no avoidable criss-crossing), with travel time — **including the commute between lodging and the day's first and last stops** — accounted for in each day's time budget.
 2. **Never schedules a place outside its opening hours** when hours are known, **always honors fixed-time commitments**, and **visibly flags** places whose hours are unverified.
 3. **Guarantees every "must-see" (5-rated) place is included**, or — if they can't all fit — **says so up front with concrete numbers** and asks the user to re-prioritize before building.
 4. Uses **real, currently-existing places** (not hallucinated), with enough trust that the user doesn't feel they must re-verify every suggestion exists.
@@ -41,9 +41,9 @@ v1 is a substantial scope (web app, map, free-text interests, feedback loop, ver
 ## Core flows
 
 1. **Create a trip.** User provides: city; dates; arrival time (day 1) and departure time (last day); lodging location; the **interests** to activate for this trip (drawn from their reusable interest library, or newly added); pace; whether to plan meals; filters (budget, dietary, accessibility — each hard or soft) and soft knobs (walking tolerance); and any **fixed-time anchors** (e.g. "museum ticket Tue 10:00", "dinner Fri 19:00").
-2. **Get & rate suggestions.** For each active free-text interest, the tool fetches real candidate places (text search → structured coords/hours), and the LLM **filters them for genuine fit** to the interest's nuance and adds a one-line description — it does **not** score them. The **user rates each candidate 1–5** (1 = low interest, 5 = must-do; low/unrated ≈ skip).
+2. **Get & rate suggestions.** For each active free-text interest, the tool fetches real candidate places (text search → structured coords/hours), and the LLM **filters them for genuine fit** to the interest's nuance and adds a one-line description — it does **not** score them. The **user rates each candidate 1–5** (1 = low interest, 5 = must-do; low/unrated ≈ skip) and may **adjust the expected visit duration** for any place (overriding the category default).
 3. **Feasibility check (deterministic) + pushback.** Before building, the tool estimates capacity (available days × usable hours ÷ average time-per-place incl. travel) vs. the high-priority picks, and checks anchor compatibility. If over-committed, or a chosen place is closed on every available day, or two anchors are mutually infeasible, it reports specifics and asks the user to trim/re-rank/swap. No LLM call until feasible.
-4. **Build schedule (deterministic).** The engine clusters places into days by geography (anchored to lodging), then solves each day as a **Traveling Salesman Problem with Time Windows** — respecting opening hours, visit durations, the daily time budget (pace), partial first/last days, optional meal windows, walking tolerance, and **fixed anchors as hard time windows**.
+4. **Build schedule (deterministic).** The engine clusters places into compact day-areas by geography, then solves each day as a **Traveling Salesman Problem with Time Windows** — respecting opening hours, **per-place visit durations**, the daily time budget (pace), the **lodging↔first-stop and last-stop↔lodging commute legs**, partial first/last days, optional meal windows, walking tolerance, and **fixed anchors as hard time windows**.
 5. **Refine (LLM + engine).** The user gives natural-language feedback. The LLM proposes **what to change** — place add/remove/**swaps**, rating changes, parameter changes, soft preferences — as a structured *sketch*, and the deterministic engine **re-solves** from it. The LLM never emits clock times; anchors and hours remain hard, so a revision can't violate them.
 6. **View & export.** Web app: a **deterministically rendered** day view (each day's theme, stops, and times) plus an **interactive map** (markers + day routes). Export an itinerary to Markdown and optionally a static map image for sharing/printing.
 7. **Save, version & reopen.** Trips persist (inputs, ratings, place IDs). The tool keeps the **last 3 schedule versions**, revertible after a refinement. Reopening re-fetches live place details (hours/coords) — requires internet.
@@ -51,7 +51,7 @@ v1 is a substantial scope (web app, map, free-text interests, feedback loop, ver
 ## Requirements
 
 **Interests, suggestions & ranking**
-- Interests are **free-text prompts**, optionally category-grouped, owned by the user as a **reusable library that grows across trips**; each trip **activates a subset** (keep the active set modest — it bounds both ranking effort and Places quota).
+- Interests are **free-text prompts**, optionally category-grouped, owned by the user as a **reusable library that grows across trips**; each trip **activates the handful relevant to that trip** (a subset of the library — e.g. ~8 of 50 for a weekend). Keep the active set modest — it bounds both ranking effort and Places quota.
 - Per active interest: LLM generates the place text-search query (batched across interests in one call), then **filters candidates for fit** to the interest's nuance (chunked across interests to respect output limits). Cap candidates per interest; **dedupe places shared across interests**; cache by `place_id`.
 - **The user does the 1–5 ranking.** The LLM never assigns the score. Rating drives scheduling priority; 5 = must-include.
 
@@ -61,9 +61,13 @@ v1 is a substantial scope (web app, map, free-text interests, feedback loop, ver
 - Richer soft taste (vibe, hidden-gem-vs-popular, indoor lean) is expressed through free-text interests + ratings, not additional toggles.
 
 **Scheduling (deterministic core)**
-- Cluster into days by geography; anchor each day's start/end near lodging.
-- Solve each day as **TSPTW**: opening hours and meal slots as time windows, fixed anchors as hard (tight) windows, per-place visit durations, daily time budget from pace, partial first/last days, travel time = haversine ÷ per-mode assumed speed, configurable slack/buffers.
+- Cluster places into **compact day-areas** by geography (the anti-criss-cross mechanism). Days need **not** start/end near lodging.
+- Account for the **lodging commute** each day: travel from lodging to the first stop and from the last stop back to lodging counts against the day's time budget (so day length is realistic), even though the route may end far from lodging.
+- Solve each day as **TSPTW**: opening hours and meal slots as time windows, fixed anchors as hard (tight) windows, **per-place visit durations** (see below), daily time budget from pace, partial first/last days, travel time = haversine ÷ per-mode assumed speed, configurable slack/buffers.
 - Must be runnable and unit-testable **without the LLM**. (Solver choice — Google OR-Tools routing vs. an insertion-heuristic + local-search fallback — is an architecture-gate decision; the TSPTW framing is fixed.)
+
+**Visit durations**
+- Every place carries an expected visit duration the scheduler consumes. Default **by category** (e.g. a sit-down meal ~1h, a viewpoint ~30m); the user can **override per place** (a fast-food stop 30m; a long reservation/wait 3h). A fixed anchor may carry its own duration. Category defaults are configurable.
 
 **Feasibility & pushback**
 - Deterministic capacity + anchor-compatibility check before building; report infeasibility with numbers and request re-prioritization. Never silently emit a bad plan.
@@ -99,10 +103,10 @@ v1 is a substantial scope (web app, map, free-text interests, feedback loop, ver
 
 - **Trip** — city, date range, arrival/departure times, lodging, pace, walking tolerance, meal toggle, filters (each with hard/soft mode), activated interests, status.
 - **Interest** — a free-text prompt, optional coarse category; **user-owned and reusable across trips** (a library).
-- **Place** — a real POI: place id (durable), name, category, and *cached* details (coordinates, opening hours, rating, price level) treated as refreshable.
-- **RankedPlace** — a Place within a Trip with the user's 1–5 rating and the interest it answered.
-- **FixedAnchor** — a user commitment with a day and/or exact time window.
-- **Lodging** — the trip's anchor location.
+- **Place** — a real POI: place id (durable), name, category, a **default visit duration** (from category), and *cached* details (coordinates, opening hours, rating, price level) treated as refreshable.
+- **RankedPlace** — a Place within a Trip with the user's 1–5 rating, the interest it answered, and an optional **visit-duration override**.
+- **FixedAnchor** — a user commitment with a day and/or exact time window, and its own duration.
+- **Lodging** — the trip's origin/return location for daily commute accounting (not a clustering centroid).
 - **ScheduledStop** — a Place placed on a Day at a start/end time, with travel-from-previous.
 - **Day** — ordered ScheduledStops for one date, with a deterministic theme/area label.
 - **ScheduleVersion** — a full routed itinerary (Days + feasibility report); up to 3 retained per Trip, revertible.
@@ -132,7 +136,7 @@ Final selection of specific services is ratified at the `/milestones` architectu
 - **Observability stack:** OpenTelemetry tracing (spans per stage + per external call), logs correlated by `trace_id`, exported to a trace store/file (console/file dev; optional local Jaeger) — **separate from the persistence DB**. Architecture gate.
 - **Web framework / map library:** backend (e.g. FastAPI) and map lib (Leaflet vs. MapLibre). Architecture gate.
 - **Active-interest cap & candidates-per-interest cap** — concrete numbers, to bound ranking effort and Places quota.
-- **Default visit durations** per category — concrete starting numbers needed.
+- **Category default visit durations** — concrete starting numbers for each category (the per-place override mechanism is fixed; only the defaults are open).
 - **Pricing verification (blocking before build):** confirm 2026 free-tier coverage for Gemini (daily request cap + output token limit), Google Places Details, and the Google Maps Platform free tier; confirm OSM-tile usage policy. Feeds ADR-001.
 
 ## Decisions log
@@ -155,7 +159,8 @@ Forks with a real alternative are linked to ADRs; architecture-level decisions a
 | Filters (v1) | Budget, dietary, accessibility — each hard or soft | Hard = exclude, soft = skew; richer taste via free-text + ratings |
 | Meals | Optional per-trip toggle; meal windows + food picks | Food is a named interest; some wing it |
 | Fixed anchors | Supported in v1 as hard time windows | Most common real constraint; central to scheduler |
-| Lodging anchor | One lodging; days radiate from it | Avoids stranding across town |
+| Lodging | One lodging; account for daily commute to/from it (days need not start/end near it) | Honest day length without forcing geography |
+| Visit durations | Category default, user-overridable per place; anchors carry own | Fast-food ≠ long reservation; duration drives the schedule |
 | Partial days | Arrival/departure shrink day 1 / last day | Prevents over-packing |
 | Day trips | Deferred to v2 | Conflicts with haversine; keep v1 lean |
 | Interface | Local web app in v1; headless engine is the tested core | User wants web + map; engine tested independently of UI |
