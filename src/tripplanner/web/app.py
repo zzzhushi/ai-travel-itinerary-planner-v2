@@ -14,6 +14,7 @@ from fastapi import FastAPI
 
 from tripplanner.application.skeleton import walking_skeleton
 from tripplanner.observability import configure_observability
+from tripplanner.web.routes.schedule import router as schedule_router
 
 
 @asynccontextmanager
@@ -23,6 +24,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="AI Travel Itinerary Planner", lifespan=lifespan)
+app.include_router(schedule_router)
 
 
 @app.get("/health")
