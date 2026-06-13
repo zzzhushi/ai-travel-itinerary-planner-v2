@@ -1,12 +1,12 @@
-# Local-LLM routing (experimental, opt-in via --local)
+# Local-LLM routing (default executor for non-complex tasks; instrumented)
 
 ## Hypothesis under test
 
-That mechanical-rated tasks can be implemented by a local model (free, private) without the review-and-repair cost eating the savings. This is an **instrumented experiment**, not an established practice — every run logs data so the economics are decidable from evidence.
+That mechanical- and standard-rated tasks can be implemented by a local model (free, private) without the review-and-repair cost eating the savings. Still **instrumented** — every run logs data so the economics stay decidable; if the data turns (decision rule below), fall back to cloud.
 
 ## Qualification (all must hold)
 
-- Task rated `mechanical` at milestone-planning time (never re-rated here).
+- Task rated `mechanical` or `standard` at milestone-planning time (never re-rated here). Complex tasks never route here.
 - A committed failing test already pins the behavior.
 - Touched files total < ~500 lines and the curated brief fits in ≤32k tokens (local model quality degrades hard past that, regardless of advertised context).
 - No security surface, no concurrency, no new dependencies.

@@ -15,10 +15,10 @@ Decision rules for all code in this project. These are rules, not aspirations �
 Lives in its own package, `src/tripplanner/observability/`:
 - `logging.py` — structlog config (JSON output) + sinks (stdout + rotating file `logs/app.jsonl`).
 - `tracing.py` — OpenTelemetry setup; span exporters (console/file in dev, optional local Jaeger via OTLP).
-- `context.py` — binds the per-run context (`correlation_id`, `trip_id`, trace/span ids) so every log line and span inherits it.
+- `context.py` — binds the per-run context (`correlation_id`, `trip_id`) so every log line inherits it; trace/span ids come from the active OTel span.
 - `schema.py` — the canonical field names + typed helpers for emitting events, so fields don't drift.
 
-**The standard fields** (every log line and span carries these; the goal is that a failed build is diagnosable from telemetry alone):
+**The standard fields** (`correlation_id` is on every line; `trace_id`/`span_id` appear on lines emitted within a span — a log outside any operation legitimately carries no trace; the goal is that a failed build is diagnosable from telemetry alone):
 
 | Field | Meaning |
 |---|---|
@@ -34,6 +34,7 @@ Lives in its own package, `src/tripplanner/observability/`:
 | LLM calls add | `model` · `call_kind` · `input_tokens` · `output_tokens` |
 
 Rules:
+- Logs serve **two readers: a human and a coding agent** (the `/debug` and `/build-milestone` loops read them to self-diagnose). Write events and fields so either can trace a failure without a debugger or the source open — this is the bar, not an extra.
 - No bare `print()` outside CLI user-facing output.
 - A span wraps each use-case and each external call (with `duration_ms` + `outcome`); logs reference the active `trace_id`.
 - Log at decision points and boundaries, not every line.

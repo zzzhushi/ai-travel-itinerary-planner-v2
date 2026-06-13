@@ -14,7 +14,7 @@ You are the orchestrator for one milestone. In sequential mode (default) you als
 
 ## Step 1 — Encode the exit criteria (before any feature code)
 
-Write the failing tests that prove each exit criterion, plus a manual validation script/checklist for criteria tests can't capture (visual quality, feel). Run them; confirm they fail for the right reason. **Commit them.** These tests are now immutable: any change to them requires user approval, never silent edits.
+Write the failing tests that prove each exit criterion, plus a manual validation script/checklist for criteria tests can't capture (visual quality, feel). Run them; confirm they fail for the right reason. **Commit them.** These tests are now immutable: any change to them requires user approval, never silent edits. Format them before committing so a later auto-format/pre-commit never touches them; if a formatter *does* edit an immutable test, the **config** is wrong — fix the config and restore the test, never accept the edit.
 
 ## Step 2 — Confirm the task plan
 
@@ -22,7 +22,7 @@ The issue carries tasks with complexity/model metadata from `/milestones`. Recon
 
 ## Step 3 — Execute tasks
 
-**Sequential (default):** for each task in dependency order — invoke the `implement-task` skill and follow its loop yourself. One task, one commit, tick the checklist.
+**Sequential (default):** for each task in dependency order, follow the `implement-task` loop, routed by the task's executor. **Complex → code it inline yourself** (full context — best on gnarly algorithms). **Mechanical/standard → the local executor:** curate the brief, run `implement-task --local` (`scripts/local_task.py` → Ollama), then **review the diff before commit** (mandatory gate); fall back to a sonnet subagent if Ollama is down. Either way: one logical unit, one commit (coupled tasks commit together — name them), tick the checklist. This keeps the routing metadata real (it was inert when sequential mode coded everything inline at the session model) and surfaces per-task cost — local runs log to `.local-llm-log.jsonl`, cloud subagents report their tokens.
 
 **`--parallel`:** read `references/parallel-execution.md`. Group tasks into dependency waves; within a wave, spawn one general-purpose subagent per task (Agent tool, `isolation: "worktree"`, model from task metadata, all spawns in one message). Each prompt is a **curated brief**: task spec + exact files + interface signatures + the few conventions that matter + the full text of the implement-task skill's loop and hard rules + "do not re-explore broadly; do not touch files outside your list". Then merge per `references/merge-protocol.md` — one branch at a time, full test suite between merges.
 
