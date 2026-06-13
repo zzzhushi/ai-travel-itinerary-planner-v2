@@ -27,3 +27,4 @@ The PRD's web phase needs a local browser UI: trip creation forms, the rate-sugg
 - Fast path to a working web UI; the whole stack stays in Python + a little HTML/JS, matching the learning goal and the free-tier constraint.
 - Trade-off accepted: less React/SPA experience; rich client-side state is intentionally out of scope (deterministic re-solve owns changes).
 - This ADR is **ratified now but bites at web-phase slicing** — the engine/data milestones are unaffected by it.
+- **Delivery is incremental, not horizontal:** each milestone exposes its use-case through a CLI command, a thin FastAPI endpoint ([api-contract.md](../api-contract.md)), and — from M4, where a persisted interactive app first exists — its own htmx UI page. A UI over the fixture-only engine (M1–M3) is premature, so those stay CLI/curl-driven. Only the map is a dedicated feature slice; the REST API and UI are validated continuously instead of in a big-bang web phase.

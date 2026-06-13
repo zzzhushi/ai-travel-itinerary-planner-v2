@@ -13,7 +13,8 @@ Human approval gates: PRD sign-off, mockup choice, roadmap approval, PR merge. E
 - `docs/prd.md` (project PRD), `docs/prds/<feature>.md` (feature PRDs)
 - `docs/design/` — approved mockups + `design-system.md`
 - `docs/roadmap.md` — milestones; one GitHub issue per milestone with exit criteria + task checklist
-- `docs/engineering-standards.md` — the quality bar; read it before writing code
+- `docs/api-contract.md` — the operation/endpoint contract (use-cases = API); CLI and web both implement it
+- `docs/engineering-standards.md` — the quality bar (incl. the observability field schema); read it before writing code
 - `docs/decisions/` — ADRs, one file per contested decision (`README.md` is the index)
 
 ## Conventions

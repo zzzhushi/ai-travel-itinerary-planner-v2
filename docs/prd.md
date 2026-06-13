@@ -36,7 +36,7 @@ These are the acceptance themes; each milestone turns the relevant ones into spe
 
 ## Delivery note
 
-v1 is a substantial scope (web app, map, free-text interests, feedback loop, versioning). It is delivered in **vertical slices, engine-first**: scaffolding → a thin routing-engine slice (single day, must-sees only) → real place data → web shell → map → feedback → versioning. "In v1" denotes the eventual product, not milestone 1. The `/milestones` stage owns that sequencing.
+v1 is a substantial scope (web app, map, free-text interests, refinement, versioning), delivered in **vertical slices, engine-first**: scaffolding → routing engine on fixtures → anchors & feasibility → persistence → real place data → LLM curation → refinement → web UI → map. Two cross-cutting principles: the **REST API and htmx UI accrete per use-case** — each milestone exposes its operation through a CLI command, a thin endpoint per [api-contract.md](api-contract.md), and (from M4, where a persisted app first exists) its own UI page, so the web app is never a horizontal big-bang (only the map is a dedicated feature slice); and **observability is built in M0**, not retrofitted. "In v1" denotes the eventual product, not milestone 1; the `/milestones` stage owns the sequencing.
 
 ## Core flows
 
@@ -88,15 +88,17 @@ v1 is a substantial scope (web app, map, free-text interests, feedback loop, ver
 **Map**
 - Web app shows an **interactive map** (pan/zoom/click markers, toggle days). The map provider is **pluggable behind an interface**: free OSM tiles (Leaflet/MapLibre) is the v1 default; a Google Maps JS implementation can be swapped in later for testing.
 
-**Observability & quality (per docs/engineering-standards.md)**
-- Diagnostics sufficient to trace a failed itinerary build end-to-end from telemetry alone, correlated across suggestion → feasibility → schedule → refinement and every external call. OpenTelemetry tracing/spans leaning.
-- **Telemetry lives outside the persistence DB:** spans export to a tracing backend (console/file in dev, optional local Jaeger); structlog logs carry the `trace_id` for correlation; the DB holds only domain data. A "spans table" in the app DB is explicitly rejected (reinvents a tracing store).
+**Observability & quality (per docs/engineering-standards.md; see [ADR-006](decisions/006-observability.md))**
+- Its own `observability/` package. **OpenTelemetry spans** wrap each use-case and external call (timed, structured); **span events / log records** carry the less-structured narrative ("fell back to OSM", "LLM kept 3 of 8"). All telemetry shares the field schema in the standards doc and a per-run `correlation_id`.
+- **LLM calls log their decisions:** the structured output (selected candidates, refinement edits) plus a short **`reasoning`** the model is asked to produce — at DEBUG, never secrets or full prompts. The reasoning is also surfaced to the user ("why this place").
+- **Telemetry is agent-debuggable and lives outside the persistence DB:** JSON logs to `logs/app.jsonl` (+ stdout), spans to console/file (optional local Jaeger). A `/build-milestone` or `/debug` subagent reads these to diagnose failures unit tests don't catch. A "spans table" in the app DB is rejected.
 - Automated tests, with the deterministic scheduler covered directly.
 
 **LLM usage & cost control**
 - LLM touchpoints (no narration): (1) interpret interests → search queries (one batched call), (2) fit-filter candidates (chunked by interest), (3) one *sketch* call per refinement round. Feasibility, scheduling, and the day view are deterministic.
 - Curation scales with the count of **active** interests, so the binding cost pressure is the **Places API quota**, mitigated by candidate caps, `place_id` caching/dedup, and modest per-trip activation. Gemini's daily request cap is not the constraint.
 - Calls are structured-in / structured-out at low temperature; the refinement prompt is explicitly forbidden from emitting a schedule. **Output token cap (and large-batch quality loss) is what forces chunking** — verify the model's output limit. Exact prompts are implementation-stage.
+- Each structured output includes a brief **`reasoning`** field (per candidate: why it fits or doesn't; per refinement: why these edits). Asking for reasoning improves judgment, gives the user a "why," and is logged at DEBUG for debugging.
 - Stay within free-tier caps; a spend guard prevents runaway cost; warn/degrade before anything would bill.
 
 ## Data entities
@@ -163,7 +165,9 @@ Forks with a real alternative are linked to ADRs; architecture-level decisions a
 | Visit durations | Category default, user-overridable per place; anchors carry own | Fast-food ≠ long reservation; duration drives the schedule |
 | Partial days | Arrival/departure shrink day 1 / last day | Prevents over-packing |
 | Day trips | Deferred to v2 | Conflicts with haversine; keep v1 lean |
-| Interface | Local web app in v1; headless engine is the tested core | User wants web + map; engine tested independently of UI |
+| Interface / delivery | CLI + REST API accrete per use-case ([api-contract.md](api-contract.md)); htmx UI + map are late presentation slices | Avoids a horizontal web big-bang; engine tested independently of UI |
+| LLM reasoning | Structured LLM outputs include a `reasoning` field — shown to user + logged at DEBUG | Better judgment, explainability, debuggability |
+| Observability | Own package; OTel spans + events; field schema; file logs; agent-debuggable → [ADR-006](decisions/006-observability.md) | More than a logger — serves production + the AI dev loop |
 | Maps | Interactive, free OSM tiles; pluggable to Google Maps JS later | Free by default; second impl genuinely planned → interface seam |
 | Persistence | Save inputs + ratings + place IDs; re-fetch on open | Caching policy forbids storing coords durably → [ADR-001](decisions/001-place-data-source.md) |
 | Versioning | Keep last 3 schedule versions, revertible | Cheap (schedule is data); pairs with refinement loop |
