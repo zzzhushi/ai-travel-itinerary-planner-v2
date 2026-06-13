@@ -1,8 +1,8 @@
-"""Pure formatting helpers: domain objects → display strings (M1 task 5)."""
+"""Pure formatting helpers: domain objects → display strings (M1 task 5, M2 task 5)."""
 
 from __future__ import annotations
 
-from tripplanner.domain.models import Itinerary
+from tripplanner.domain.models import Day, Itinerary, MultiDayItinerary, RankedPlace
 
 
 def _fmt(minutes: int) -> str:
@@ -10,19 +10,13 @@ def _fmt(minutes: int) -> str:
     return f"{h:02d}:{m:02d}"
 
 
-def format_day(itin: Itinerary) -> str:
-    """Human-readable single-day itinerary. Returns a string; caller prints."""
-    lines: list[str] = [f"Day {itin.day.date.isoformat()}"]
-
-    stops = itin.day.stops
+def _day_block(day: Day) -> list[str]:
+    """The body lines for one day: travel legs, stops, and the total — no header."""
+    stops = day.stops
     if not stops:
-        lines.append("  (no stops scheduled)")
-        lines.append("Total travel: 0 min")
-        if itin.unscheduled:
-            names = ", ".join(rp.place.name for rp in itin.unscheduled)
-            lines.append(f"\n⚠ Did not fit ({len(itin.unscheduled)}): {names}")
-        return "\n".join(lines)
+        return ["  (no stops scheduled)", "Total travel: 0 min"]
 
+    lines: list[str] = []
     # First travel leg: lodging → first stop
     first = stops[0]
     depart_lodging = _fmt(first.arrive_min - first.travel_from_prev_min)
@@ -47,13 +41,34 @@ def format_day(itin: Itinerary) -> str:
     last = stops[-1]
     lines.append(
         f"  {_fmt(last.depart_min)}  {last.place.name} → Lodging"
-        f"  ({itin.day.return_travel_min} min travel, return)"
+        f"  ({day.return_travel_min} min travel, return)"
     )
 
-    lines.append(f"Total travel: {itin.day.total_travel_min()} min")
+    lines.append(f"Total travel: {day.total_travel_min()} min")
+    return lines
 
+
+def _unscheduled_line(unscheduled: tuple[RankedPlace, ...]) -> str:
+    names = ", ".join(rp.place.name for rp in unscheduled)
+    return f"\n⚠ Did not fit ({len(unscheduled)}): {names}"
+
+
+def format_day(itin: Itinerary) -> str:
+    """Human-readable single-day itinerary. Returns a string; caller prints."""
+    lines: list[str] = [f"Day {itin.day.date.isoformat()}"]
+    lines.extend(_day_block(itin.day))
     if itin.unscheduled:
-        names = ", ".join(rp.place.name for rp in itin.unscheduled)
-        lines.append(f"\n⚠ Did not fit ({len(itin.unscheduled)}): {names}")
+        lines.append(_unscheduled_line(itin.unscheduled))
+    return "\n".join(lines)
 
+
+def format_multiday(itin: MultiDayItinerary) -> str:
+    """Human-readable multi-day itinerary: a numbered, dated block per day, then
+    any places that did not fit. Returns a string; caller prints."""
+    lines: list[str] = []
+    for n, day in enumerate(itin.days, start=1):
+        lines.append(f"Day {n} — {day.date.isoformat()}")
+        lines.extend(_day_block(day))
+    if itin.unscheduled:
+        lines.append(_unscheduled_line(itin.unscheduled))
     return "\n".join(lines)
