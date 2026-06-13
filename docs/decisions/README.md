@@ -6,4 +6,4 @@ One file per decision where a real alternative was seriously considered (the gat
 
 | ADR | Decision | Status |
 |---|---|---|
-| — | (none yet) | — |
+| [001](001-place-data-source.md) | Structured place-data API (Google Places New) as source of truth; LLM curates | proposed |
