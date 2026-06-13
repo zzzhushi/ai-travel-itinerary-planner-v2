@@ -75,3 +75,53 @@ class Itinerary:
     @property
     def is_feasible(self) -> bool:
         return not self.unscheduled
+
+
+# --- Multi-day (M2) --------------------------------------------------------
+# Additive over the single-day engine: the multi-day orchestrator clusters
+# places into day-areas and calls the M1 single-day scheduler per day. The M1
+# `Trip`/`Itinerary` shapes above are unchanged.
+
+
+@dataclass(frozen=True)
+class MealWindow:
+    """A reserved eating slot. When meal planning is on, a food pick is
+    constrained to land inside [earliest_min, latest_min]."""
+
+    name: str  # "lunch", "dinner"
+    earliest_min: int
+    latest_min: int  # must be seated/served by this time
+    duration_min: int
+
+
+@dataclass(frozen=True)
+class MultiDayTrip:
+    """A trip spanning num_days consecutive dates from start_date. Day 1 begins
+    at arrival_min (partial first day); the last day ends at departure_min
+    (partial last day); middle days use the [day_start_min, day_end_min] window."""
+
+    city: str
+    start_date: date
+    num_days: int
+    lodging: Lodging
+    arrival_min: int  # day 1 cannot leave lodging before this
+    departure_min: int  # last day must be back at lodging by this
+    day_start_min: int  # normal (middle-day) window start
+    day_end_min: int  # normal (middle-day) window end
+    places: tuple[RankedPlace, ...]
+    walking_tolerance: float = 1.0  # <1 tightens spread (less walking); >1 permits more
+    plan_meals: bool = False
+    meal_windows: tuple[MealWindow, ...] = ()
+
+
+@dataclass(frozen=True)
+class MultiDayItinerary:
+    days: tuple[Day, ...]
+    unscheduled: tuple[RankedPlace, ...] = ()
+
+    @property
+    def is_feasible(self) -> bool:
+        return not self.unscheduled
+
+    def total_travel_min(self) -> int:
+        return sum(d.total_travel_min() for d in self.days)
