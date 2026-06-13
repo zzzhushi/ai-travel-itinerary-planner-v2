@@ -47,15 +47,22 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["src", "tests"]
+files = ["src", "tests", "scripts", "run_cli.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=tripplanner --cov-report=term-missing --cov-report=json"
+filterwarnings = [
+    # Third-party: starlette's TestClient deprecates the bundled httpx shim.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
 
 [tool.coverage.run]
 source = ["tripplanner"]
 branch = true
+# __main__.py is a thin `python -m` entry guard; its target main() is unit-tested
+# and the entrypoint itself is exercised by tests/test_entrypoints.py (subprocess).
+omit = ["*/__main__.py"]
 
 [tool.coverage.report]
 show_missing = true
