@@ -10,17 +10,17 @@ Status: draft (awaiting slicing approval) · Date: 2026-06-12
 
 ## Milestone overview
 
-| # | Demo sentence | Retires risk | tasks |
-|---|---|---|---|
-| 0 | `python run_cli.py --version` and `GET /health` run green through CI; one log line carries the full trace schema | foundation + observability | 8 |
-| 1 | `schedule oneday.json` (and `POST /schedule`) → a routed **single day** respecting hours, durations, day window, lodging commute | can the heuristic route at all | 6 |
-| 2 | a **multi-day** plan: geo-clustered days, partial first/last days, meal windows, walking tolerance | multi-day quality | 6 |
-| 3 | a plan honoring a pinned **7pm dinner**; **feasibility pushback** when over-committed; **re-rank → rebuild** | anchors + infeasibility + re-solve | 7 |
-| 4 | create & reopen a trip **in the browser**; revert a version (SQLite + web UI shell) | persistence + UI shell | 9 |
-| 5 | `--interest "miradouros"` → **real cached places** shown in the browser (Google→OSM, quota-guarded) | real data + ToS + free-tier | 10 |
-| 6 | `--interest "cafés that serve more than coffee"` → **LLM-curated** candidates rated **in the browser**, with `reasoning` | LLM curation | 8 |
-| 7 | `refine "make day 2 more relaxed"` **in the browser** → a valid revised version honoring anchors | NL refinement | 6 |
-| 8 | options and the schedule **on a map**, toggle days, static export | the map | 5 |
+| # | Issue | Demo sentence | Retires risk | tasks |
+|---|---|---|---|---|
+| 0 | [#2](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/2) | `python run_cli.py --version` and `GET /health` run green through CI; one log line carries the full trace schema | foundation + observability | 8 |
+| 1 | [#3](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/3) | `schedule oneday.json` (and `POST /schedule`) → a routed **single day** respecting hours, durations, day window, lodging commute | can the heuristic route at all | 6 |
+| 2 | [#4](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/4) | a **multi-day** plan: geo-clustered days, partial first/last days, meal windows, walking tolerance | multi-day quality | 6 |
+| 3 | [#5](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/5) | a plan honoring a pinned **7pm dinner**; **feasibility pushback** when over-committed; **re-rank → rebuild** | anchors + infeasibility + re-solve | 7 |
+| 4 | [#6](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/6) | create & reopen a trip **in the browser**; revert a version (SQLite + web UI shell) | persistence + UI shell | 9 |
+| 5 | [#7](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/7) | `--interest "miradouros"` → **real cached places** shown in the browser (Google→OSM, quota-guarded) | real data + ToS + free-tier | 10 |
+| 6 | [#8](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/8) | `--interest "cafés that serve more than coffee"` → **LLM-curated** candidates rated **in the browser**, with `reasoning` | LLM curation | 8 |
+| 7 | [#9](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/9) | `refine "make day 2 more relaxed"` **in the browser** → a valid revised version honoring anchors | NL refinement | 6 |
+| 8 | [#10](https://github.com/zzzhushi/ai-travel-itinerary-planner-v2/issues/10) | options and the schedule **on a map**, toggle days, static export | the map | 5 |
 
 ---
 
