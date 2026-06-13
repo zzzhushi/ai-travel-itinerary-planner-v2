@@ -16,7 +16,7 @@ Fails any check → run the task normally on the cloud model and say so.
 ## Process
 
 1. **Curate the brief** (this is where the engineering lives — the local model gets conclusions, not exploration ability): task description; full contents of files to modify; signatures/docstrings of interfaces it must call (not their bodies); the failing test verbatim; a ≤20-line excerpt of relevant conventions from `docs/engineering-standards.md`; explicit list of files it may write.
-2. **Run** `scripts/local_task.py --brief <file> --model <name>` (default `qwen3-coder:30b`; alternative `devstral`). Requires Ollama running locally (`ollama serve`). The script calls the model, extracts complete-file outputs, and writes ONLY whitelisted paths.
+2. **Run** `scripts/local_task.py --brief <file>` — model defaults to `$TRIPPLANNER_LOCAL_MODEL` or `qwen3.6:latest`; override with `--model` (e.g. a coding-specialized `qwen3-coder` / `devstral` if pulled). Requires Ollama serving (`ollama serve`; the model loads into memory on first call). The script calls the model, extracts complete-file outputs, and writes ONLY whitelisted paths.
 3. **Verify mechanically:** ruff, mypy, pytest. Up to 2 repair round-trips through the script (append the error output to the brief); after that, discard and implement on the cloud model.
 4. **Top-model review (you, now):** read the full diff against the brief and guardrails — convention violations, hardcoding, edge cases. Fix or reject. **Never commit unreviewed local-model output.**
 5. **Log the data point** — the script appends to `.local-llm-log.jsonl`: model, brief token estimate, repair rounds, review findings count, accepted/rejected. `/retro` reads this log to call the experiment.

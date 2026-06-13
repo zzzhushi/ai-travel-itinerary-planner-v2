@@ -8,18 +8,23 @@ this script never commits.
 
 Usage:
   local_task.py --brief brief.md --allow src/foo.py --allow tests/test_foo.py
-                [--model qwen3-coder:30b] [--repair-log pytest_output.txt]
+                [--model qwen3.6:latest] [--repair-log pytest_output.txt]
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+
+# The local coding model. Override per-call with --model, or globally with
+# TRIPPLANNER_LOCAL_MODEL. Default is the model this project was set up with.
+DEFAULT_MODEL = os.environ.get("TRIPPLANNER_LOCAL_MODEL", "qwen3.6:latest")
 from pathlib import Path
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
@@ -68,7 +73,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--brief", required=True, help="markdown brief file")
     ap.add_argument("--allow", action="append", required=True, help="writable path (repeatable)")
-    ap.add_argument("--model", default="qwen3-coder:30b")
+    ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--repair-log", help="prior verify output to append (repair round)")
     args = ap.parse_args()
 
