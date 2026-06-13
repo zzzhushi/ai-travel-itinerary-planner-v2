@@ -94,6 +94,22 @@ def test_produces_one_entry_per_day_even_when_empty() -> None:
     assert len(itin.days) == 3
 
 
+def test_unscheduled_meal_pick_keeps_original_hours() -> None:
+    # A far restaurant can't fit a tight lunch window; it must surface in
+    # unscheduled with its ORIGINAL hours, not the clamped meal window.
+    lunch = MealWindow(name="lunch", earliest_min=_hm(12), latest_min=_hm(13), duration_min=60)
+    far_restaurant = _ranked(
+        "R", 30, 0, opens=_hm(9), closes=_hm(22), duration=60, category="restaurant"
+    )
+    itin = schedule_trip(
+        _trip((far_restaurant,), plan_meals=True, meal_windows=(lunch,)), _grid_travel
+    )
+    dropped = {rp.place.id: rp for rp in itin.unscheduled}
+    assert "R" in dropped, "the unreachable meal pick should be unscheduled"
+    assert dropped["R"].place.closes_min == _hm(22), "original hours, not the clamped window"
+    assert dropped["R"].place.opens_min == _hm(9)
+
+
 def test_dinner_only_restaurant_is_not_forced_into_lunch() -> None:
     # A restaurant open only in the evening cannot fill a midday lunch window; its
     # hours don't overlap, so it is left unconstrained (scheduled by normal routing).

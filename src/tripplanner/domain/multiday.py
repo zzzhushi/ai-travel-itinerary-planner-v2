@@ -94,7 +94,11 @@ def _schedule_day_within_cap(
 ) -> tuple[Day, list[RankedPlace]]:
     """Schedule a day, then trim it to the walking cap by repeatedly dropping the
     stop whose removal most reduces total travel. Returns the day and the places
-    that ended up unscheduled (both trimmed and never-fit)."""
+    that ended up unscheduled (both trimmed and never-fit).
+
+    The cap is a soft target: trimming always leaves at least one stop, so a day
+    whose only reachable place sits beyond the cap keeps that single stop rather
+    than emptying the day."""
     active = list(day_places)
     result = _schedule_day(active, trip, day_date, start, end, travel_min)
 
@@ -139,6 +143,9 @@ def schedule_trip(trip: MultiDayTrip, travel_min: TravelMinutes) -> MultiDayItin
             day_places, trip, day_date, start, end, cap, travel_min
         )
         days.append(day)
-        unscheduled.extend(day_unscheduled)
+        # Report unscheduled places with their original hours, not the meal-clamped
+        # ones _apply_meals may have produced.
+        original_by_id = {rp.place.id: rp for rp in cluster}
+        unscheduled.extend(original_by_id[rp.place.id] for rp in day_unscheduled)
 
     return MultiDayItinerary(days=tuple(days), unscheduled=tuple(unscheduled))
