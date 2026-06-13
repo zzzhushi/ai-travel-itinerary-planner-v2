@@ -7,6 +7,7 @@ trace/span ids) and emits a structured completion log with `duration_ms` and
 
 from __future__ import annotations
 
+import sys
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -19,7 +20,15 @@ from opentelemetry.trace import Status, StatusCode
 
 from tripplanner.observability.context import ensure_correlation_id
 from tripplanner.observability.logging import get_logger
-from tripplanner.observability.schema import Component, Outcome
+from tripplanner.observability.schema import (
+    DURATION_MS,
+    ERROR_MESSAGE,
+    ERROR_TYPE,
+    OPERATION,
+    OUTCOME,
+    Component,
+    Outcome,
+)
 
 _TRACING_CONFIGURED = False
 
@@ -32,8 +41,6 @@ def configure_tracing(*, console: bool) -> None:
         return
     provider = TracerProvider()
     if console:
-        import sys
-
         provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(out=sys.stderr)))
     trace.set_tracer_provider(provider)
     _TRACING_CONFIGURED = True
@@ -44,25 +51,31 @@ def add_event(name: str, **attributes: Any) -> None:
     trace.get_current_span().add_event(name, attributes=attributes)
 
 
+def _completion_fields(
+    start: float, outcome: Outcome, exc: Exception | None = None
+) -> dict[str, Any]:
+    fields: dict[str, Any] = {
+        DURATION_MS: round((time.perf_counter() - start) * 1000, 2),
+        OUTCOME: outcome.value,
+    }
+    if exc is not None:
+        fields[ERROR_TYPE] = type(exc).__name__
+        fields[ERROR_MESSAGE] = str(exc)
+    return fields
+
+
 @contextmanager
 def span(operation: str, *, component: Component) -> Iterator[None]:
     ensure_correlation_id()
-    log = get_logger(component).bind(operation=operation)
+    log = get_logger(component).bind(**{OPERATION: operation})
     tracer = trace.get_tracer("tripplanner")
     start = time.perf_counter()
     with tracer.start_as_current_span(operation) as otel_span:
         try:
             yield
         except Exception as exc:
-            duration_ms = round((time.perf_counter() - start) * 1000, 2)
             otel_span.set_status(Status(StatusCode.ERROR))
             otel_span.record_exception(exc)
-            log.error(
-                operation,
-                duration_ms=duration_ms,
-                outcome=Outcome.ERROR.value,
-                **{"error.type": type(exc).__name__, "error.message": str(exc)},
-            )
+            log.error(operation, **_completion_fields(start, Outcome.ERROR, exc))
             raise
-        duration_ms = round((time.perf_counter() - start) * 1000, 2)
-        log.info(operation, duration_ms=duration_ms, outcome=Outcome.OK.value)
+        log.info(operation, **_completion_fields(start, Outcome.OK))

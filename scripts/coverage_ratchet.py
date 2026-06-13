@@ -23,8 +23,18 @@ def main() -> int:
     if not REPORT.exists():
         print("coverage.json not found — run pytest with --cov-report=json first", file=sys.stderr)
         return 1
-    pct = float(json.loads(REPORT.read_text())["totals"]["percent_covered"])
-    baseline = float(BASELINE.read_text()) if BASELINE.exists() else 0.0
+    # Round to the baseline's stored precision so the `pct > baseline` branch
+    # doesn't fire on every run from sub-decimal float noise (baseline churn).
+    try:
+        pct = round(float(json.loads(REPORT.read_text())["totals"]["percent_covered"]), 2)
+    except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        print(f"could not read coverage from {REPORT}: {exc}", file=sys.stderr)
+        return 1
+    try:
+        baseline = float(BASELINE.read_text()) if BASELINE.exists() else 0.0
+    except ValueError as exc:
+        print(f"invalid {BASELINE} (expected a number): {exc}", file=sys.stderr)
+        return 1
     if pct + EPSILON < baseline:
         print(f"FAIL: coverage {pct:.2f}% dropped below baseline {baseline:.2f}%", file=sys.stderr)
         return 1
