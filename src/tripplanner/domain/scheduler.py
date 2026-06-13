@@ -86,39 +86,35 @@ def _greedy(
     current_coord = lodging
 
     while remaining:
-        best_rp: RankedPlace | None = None
-        best_travel = -1
+        # (rp, travel, depart) of the best feasible next stop found so far.
+        best: tuple[RankedPlace, int, int] | None = None
 
         for rp in remaining:
             place = rp.place
             travel = travel_min(current_coord, place.coord)
             arrive = max(current_time + travel, place.opens_min)
-            duration = resolve_duration_min(rp)
-            depart = arrive + duration
+            depart = arrive + resolve_duration_min(rp)
 
             if depart > place.closes_min:
                 continue
             if depart + travel_min(place.coord, lodging) > day_end:
                 continue
 
-            if best_rp is None or travel < best_travel:
-                best_travel = travel
-                best_rp = rp
+            # Choose the earliest-finishing feasible stop, not the nearest: a
+            # nearby but late-opening place would burn the morning waiting and
+            # strand others. 2-opt then minimizes travel over the chosen set.
+            # Ties broken by smaller travel to keep the route compact.
+            if best is None or depart < best[2] or (depart == best[2] and travel < best[1]):
+                best = (rp, travel, depart)
 
-        if best_rp is None:
+        if best is None:
             break  # Nothing left can fit; remaining all go to unscheduled.
 
-        # Advance state to the chosen stop.
-        place = best_rp.place
-        travel = travel_min(current_coord, place.coord)
-        arrive = max(current_time + travel, place.opens_min)
-        duration = resolve_duration_min(best_rp)
-        depart = arrive + duration
-
+        best_rp, _, best_depart = best
         ordered.append(best_rp)
         remaining.remove(best_rp)
-        current_time = depart
-        current_coord = place.coord
+        current_time = best_depart
+        current_coord = best_rp.place.coord
 
     return ordered, remaining
 
@@ -139,7 +135,10 @@ def _two_opt(
     while improved:
         improved = False
         cur = _try_schedule(order, lodging, day_start, day_end, travel_min)
-        assert cur is not None  # greedy guarantees the base order is feasible
+        # The incoming order is always greedy-feasible; raise (not assert, which -O
+        # strips) if that invariant is ever broken rather than crash on None unpack.
+        if cur is None:
+            raise RuntimeError("2-opt received an infeasible base order")
         cur_travel = _total_travel(*cur)
 
         for i in range(len(order) - 1):
