@@ -2,7 +2,7 @@
 
 ```markdown
 # PRD: <product / feature name>
-Status: draft | approved   ·   Date: <YYYY-MM-DD>   ·   Mode: project | feature
+Status: draft | approved · Date: <YYYY-MM-DD> · Mode: project | feature · Type: product | infra | data | automation
 
 ## Problem
 Who hurts, when, and how badly. Concrete scenario, not a persona poster.
@@ -12,7 +12,7 @@ Primary user(s) and what they're doing the moment they reach for this.
 
 ## Goals & success criteria
 What "working" means, observably. Each criterion is checkable:
-- e.g. "A first-time user gets a usable 3-day itinerary in under 2 minutes."
+- e.g. "A first-time user completes the core task in under 2 minutes."
 
 ## Non-goals
 Explicitly cut or deferred, with one line of why. This section earns its length.
@@ -38,7 +38,9 @@ Cost ceilings, privacy requirements, "must run locally", latency bounds.
 Unresolved items, each with an owner (user decision vs research task).
 
 ## Decisions log
-Q&A pairs from the interview that explain WHY requirements are what they are.
+One-line Q&A pairs from the interview that explain WHY requirements are what
+they are. Decisions where a real alternative was weighed link to their ADR:
+| decision | why | ADR |
 Future sessions read this instead of re-asking.
 ```
 

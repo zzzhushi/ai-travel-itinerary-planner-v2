@@ -18,7 +18,7 @@ Write the failing tests that prove each exit criterion, plus a manual validation
 
 ## Step 2 — Confirm the task plan
 
-The issue carries tasks with complexity/model metadata from `/milestones`. Reconcile against current code reality; if a task turned out under-specified or new tasks emerged, update the issue body (`gh issue edit`, body via temp file). With `--subissues`: create one sub-issue per task linked to the milestone issue instead of a checklist.
+The issue carries tasks with complexity/model metadata from `/milestones`. Reconcile against current code reality; if a task turned out under-specified or new tasks emerged, update the issue body (`gh issue edit`, body via temp file). If reconciliation reveals **more than 10 real tasks**, don't grow the milestone: shrink its demo sentence, deliver the smaller vertical slice, and spin the remainder into a new milestone issue inserted in the roadmap (never sub-number). With `--subissues`: create one sub-issue per task linked to the milestone issue instead of a checklist.
 
 ## Step 3 — Execute tasks
 

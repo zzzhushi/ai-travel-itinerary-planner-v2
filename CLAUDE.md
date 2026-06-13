@@ -14,11 +14,13 @@ Human approval gates: PRD sign-off, mockup choice, roadmap approval, PR merge. E
 - `docs/design/` — approved mockups + `design-system.md`
 - `docs/roadmap.md` — milestones; one GitHub issue per milestone with exit criteria + task checklist
 - `docs/engineering-standards.md` — the quality bar; read it before writing code
-- `docs/decisions.md` — short architecture decision notes
+- `docs/decisions/` — ADRs, one file per contested decision (`README.md` is the index)
 
 ## Conventions
 
-- Branch per milestone: `milestone-<n>-<slug>`. Squash-merge via PR, `Closes #<issue>`.
+- **Verify command** (skills reference this line; update it here when tooling changes):
+  `uv run ruff check && uv run mypy && uv run pytest -q`
+- Branch per milestone: `milestone-<n>-<slug>`. Squash-merge via PR, `Closes #<issue>`. Commits on main are hook-blocked.
 - Commit messages: 1–3 sentences, what + the non-obvious why. No play-by-play.
 - Exit-criteria tests are written and committed BEFORE feature code in every milestone. Never weaken a test to make it pass — escalate instead.
 - `.status_notes/` is the user's private notes directory — do not read or modify it.

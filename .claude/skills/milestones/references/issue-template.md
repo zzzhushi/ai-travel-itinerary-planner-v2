@@ -26,7 +26,7 @@ Body:
 
 ## Context for cold-start sessions
 2–4 sentences: where this milestone sits in the roadmap, what exists before it,
-any decisions a fresh session needs to know (link docs/decisions.md entries).
+any decisions a fresh session needs to know (link docs/decisions/ ADRs).
 ```
 
 Mechanics:

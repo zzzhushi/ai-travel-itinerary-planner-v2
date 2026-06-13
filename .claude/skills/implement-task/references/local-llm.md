@@ -23,4 +23,4 @@ Fails any check → run the task normally on the cloud model and say so.
 
 ## Decision rule for the experiment
 
-After ~10 logged runs: if median review-findings ≥ 2 or rejection rate ≥ 30%, the hypothesis failed for this model/task mix — retire the flag (and note it in docs/decisions.md) rather than letting a degraded path linger.
+After ~10 logged runs: if median review-findings ≥ 2 or rejection rate ≥ 30%, the hypothesis failed for this model/task mix — retire the flag (with an ADR in docs/decisions/ recording the data) rather than letting a degraded path linger.

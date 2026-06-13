@@ -34,7 +34,7 @@ Decision rules for all code in this project. These are rules, not aspirations �
 
 - Comment only non-obvious decisions and constraints (the "why"); never narrate what the code does.
 - README quickstart must actually work — it is re-verified during `/audit`.
-- Each architectural decision that wasn't obvious gets a short note in `docs/decisions.md` (one paragraph: context, decision, why).
+- Each decision where a real alternative was seriously considered gets an ADR in `docs/decisions/NNN-slug.md` (Context / Options / Decision / Consequences — template in the milestones skill). Routine choices don't; the gate is "was there a genuine fork in the road".
 
 ## Tooling
 

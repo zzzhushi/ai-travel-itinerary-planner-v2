@@ -24,7 +24,7 @@ Compare reality against `docs/engineering-standards.md`, looking for drift that 
 ## 3. Documentation freshness
 
 - **Execute** the README quickstart verbatim in a clean shell — it works or it's a finding
-- `docs/decisions.md` entries still true? (superseded decisions get marked, not deleted)
+- `docs/decisions/` ADRs still true? (superseded ones get marked superseded, not deleted)
 - Roadmap status matches reality; engineering-standards still matches actual practice (if practice drifted for a good reason, the *doc* might be the finding)
 
 ## Output

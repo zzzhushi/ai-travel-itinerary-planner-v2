@@ -1,37 +1,31 @@
 ---
 name: milestones
-description: Break an approved PRD into vertically-sliced milestones with exit criteria, task decomposition with complexity/model routing metadata, and one GitHub issue per milestone. Use after PRD (and design, if UI) approval ("plan milestones", "break this down", "create the roadmap").
+description: Turn an approved PRD into an architecture sketch (approved first) and vertically-sliced milestones with exit criteria, task decomposition with complexity/model routing metadata, and one GitHub issue per milestone. Use after PRD (and design, if applicable) approval ("plan milestones", "break this down", "create the roadmap").
 ---
 
-# Milestones: Vertical Slices with Exit Criteria
+# Milestones: Architecture Gate, then Vertical Slices
 
-You are converting the PRD into an ordered list of **demonstrable product increments**. This stage is also where architecture is decided (deliberately not in the PRD) and where every task gets its complexity rating — workers never self-assess.
+Two human gates in this skill, in order: architecture first, slicing second. A bad architecture choice silently shapes every slice — it gets looked at on its own, never bundled into roadmap approval.
 
 ## Inputs
 
-Read `docs/prd.md` (or the feature PRD), `docs/design/design-system.md` if present, and `docs/engineering-standards.md`. In an existing codebase, Explore the current structure first.
+Read the PRD, `docs/design/` artifacts if present, and `docs/engineering-standards.md`. In an existing codebase, Explore the current structure first.
 
-## Slicing rules
+## Gate 1 — Architecture sketch (one page, approved before any slicing)
 
-1. **Vertical only.** Every milestone ends with something a human can run and judge: "user gets a 1-day itinerary for one city from the CLI" — never "data layer complete". If a milestone's demo sentence starts with "the code now has...", it's horizontal; re-slice.
-2. **Milestone 0 is always scaffolding:** uv + pyproject, pytest, ruff, mypy strict, structlog setup, pre-commit + gitleaks, CI with coverage ratchet, and activation of the repo's test-blocking Stop hook. The quality machinery must exist before feature code.
-3. **Sizing:** a milestone decomposes into **≤10 tasks** or it splits. Prefer 4–7.
-4. **Order by risk, not convenience:** the milestone that tests the riskiest assumption (usually the LLM-quality core loop) comes right after scaffolding.
-5. **Architecture decisions** made here (framework, storage, module boundaries) get one-paragraph notes in `docs/decisions.md`.
+Architecture = the decisions **expensive to reverse**: system shape, what stores the data and who owns the schema, module boundaries and dependency direction, framework/runtime, sync-vs-async integration. (File names and function signatures are not architecture — leave them to implementation.) Propose the sketch with one-line rationale per decision; where a real alternative was seriously weighed, write an ADR (`references/adr-template.md`) in `docs/decisions/NNN-slug.md`. User approves the sketch before you slice.
 
-## Per-milestone contents (template: `references/roadmap-template.md`)
+## Gate 2 — Slicing
 
-Goal (the demo sentence) · **Exit criteria** (observable behaviors, each mapped to the test or validation command that proves it) · Validation steps (exact commands/clicks a human runs) · Graceful-degradation behavior for any external dependency introduced · Task list with metadata.
+1. **Vertical only.** Every milestone ends with something a human can run and judge — the **demo sentence**: for products "user does X and sees Y"; for infra/data "a client invokes X and gets Y" (curl, example client code, one file through the pipeline). If the demo sentence starts with "the code now has...", it's horizontal; re-slice. Infra exit criteria may include SLO checks and failure injection.
+2. **Milestone 0 is always scaffolding** — exactly the machinery every milestone consumes (env/deps, test runner, lint, types, logging setup, pre-commit, CI with coverage ratchet, hook activation), proven by a walking skeleton: one hello-world slice through the whole toolchain passing CI. Never pre-build what only a future milestone needs; extension *patterns* live in the standards doc.
+3. **Sizing:** a milestone decomposes into **≤10 tasks** or it splits (prefer 4–7). If later reconciliation in `/build-milestone` reveals more, the protocol is: shrink the demo sentence, deliver the smaller slice, spin the remainder into a NEW issue inserted in the roadmap — identity lives in issue numbers, never sub-numbering (no "m1.5").
+4. **Order by risk:** the milestone testing the riskiest assumption comes right after scaffolding.
 
-## Task metadata (the routing classifier)
+## Task metadata (the routing classifier — workers never self-assess)
 
-Each task carries: `complexity` (mechanical | standard | complex), `model` (haiku | sonnet | opus), `why` (one line), `depends_on` (task ids).
+Each task carries `complexity` (mechanical | standard | complex), `model` (haiku | sonnet | opus), `why`, `depends_on`. Mechanical = boilerplate/config following an existing pattern → haiku. Standard = new feature copying an established pattern, fully specified → sonnet. Complex = novel algorithm, concurrency, security surface, or ANY ambiguity → opus + extended thinking, regardless of size. **Routability test:** rate below complex only if the task's failing test could be written right now; otherwise fix the spec, don't route down.
 
-- **mechanical** — boilerplate/rename/config following an existing pattern → haiku.
-- **standard** — new feature copying an established pattern, fully specified → sonnet.
-- **complex** — novel algorithm, concurrency, security surface, or ANY ambiguity → opus + extended thinking, regardless of size.
-- **Routability test:** a task may be rated below `complex` only if its failing test could be written right now. If not, the task is under-specified — fix the spec, don't route it down.
+## Output
 
-## Gate and output
-
-Present the roadmap, iterate with the user, get explicit approval. Then write `docs/roadmap.md` and create one GitHub issue per milestone (`gh issue create`) from `references/issue-template.md` — title `Milestone <n>: <goal>`, body with exit criteria, validation steps, and the task checklist. Confirm issue numbers back into the roadmap doc.
+After both approvals: write `docs/roadmap.md` (`references/roadmap-template.md`) and create one GitHub issue per milestone (`gh issue create`, body via temp file, from `references/issue-template.md`). Record issue numbers back into the roadmap.

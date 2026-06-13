@@ -17,7 +17,7 @@ PRD: docs/prd.md (approved <date>) · Status: approved <date>
 - [ ] <observable behavior> — proven by `<...>`
 **Validation steps:** exact commands/clicks, copy-pasteable.
 **Degradation:** <new external dep> down → <user-visible behavior>.
-**Architecture notes:** decisions made for this slice (mirrored to docs/decisions.md).
+**Architecture notes:** decisions made for this slice (contested ones become ADRs in docs/decisions/).
 
 **Tasks:**
 | id | task | complexity | model | why | depends_on |

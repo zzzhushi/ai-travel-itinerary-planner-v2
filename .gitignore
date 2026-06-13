@@ -227,3 +227,6 @@ __marimo__/
 
 # Local-LLM experiment data (read by /retro on this machine)
 .local-llm-log.jsonl
+
+# Bash audit log written by the pre_bash_guard hook
+.claude/audit.log
