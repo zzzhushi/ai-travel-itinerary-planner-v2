@@ -170,7 +170,14 @@ def schedule(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
     ordered = _two_opt(ordered, lodging, trip.day_start_min, trip.day_end_min, travel_min)
 
     result = _try_schedule(ordered, lodging, trip.day_start_min, trip.day_end_min, travel_min)
-    assert result is not None  # greedy + 2-opt guarantees feasibility
+    # _try_schedule can only fail here if travel_min is non-deterministic (haversine is not).
+    # Raise explicitly so callers get a clear error rather than a TypeError on None unpacking
+    # (assert is stripped by -O and would silence the failure).
+    if result is None:
+        raise RuntimeError(
+            "scheduler produced an infeasible order after greedy+2-opt; "
+            "check that travel_min is deterministic"
+        )
 
     stops, return_travel = result
     return Itinerary(
