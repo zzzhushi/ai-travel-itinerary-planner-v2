@@ -14,7 +14,7 @@ You are the orchestrator for one milestone. In sequential mode (default) you als
 
 ## Step 1 — Encode the exit criteria (before any feature code)
 
-Write the failing tests that prove each exit criterion, plus a manual validation script/checklist for criteria tests can't capture (visual quality, feel). Run them; confirm they fail for the right reason. **Commit them.** These tests are now immutable: any change to them requires user approval, never silent edits. Format them before committing so a later auto-format/pre-commit never touches them; if a formatter *does* edit an immutable test, the **config** is wrong — fix the config and restore the test, never accept the edit.
+Write the failing tests that prove each exit criterion, plus a manual validation script/checklist for criteria tests can't capture (visual quality, feel). Run them; confirm they fail for the right reason. **Commit them in their own commit** — no implementation code in this commit. These tests are now immutable: any change to them requires user approval, never silent edits. The test commit is also the repair anchor for local-LLM runs: `git reset --hard <test-commit>` discards a failed implementation attempt cleanly. Format them before committing so a later auto-format/pre-commit never touches them; if a formatter *does* edit an immutable test, the **config** is wrong — fix the config and restore the test, never accept the edit.
 
 ## Step 2 — Confirm the task plan
 
