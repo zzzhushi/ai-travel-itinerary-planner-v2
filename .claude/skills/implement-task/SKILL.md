@@ -23,6 +23,6 @@ A task brief containing: the task description, its complexity/model rating, the 
 
 Read `references/guardrails.md` before step 3 the first time, and whenever tempted to bend one. The unbendable three: never weaken/delete/skip a test to make it pass; never add `# noqa` / `# type: ignore` / skip-markers without an adjacent justification comment; never add a dependency without surfacing it first.
 
-## Local-LLM routing (the default executor for non-complex tasks)
+## Local-LLM routing (default executor when Ollama is available)
 
-For tasks rated **mechanical or standard** (complex always runs on opus). When Ollama is available this is the **default** executor for non-complex work; without it, fall back to a sonnet subagent. The standalone `--local` flag forces this path for a one-off task. Process in `references/local-llm.md`; mechanics in `scripts/local_task.py`. **Every local run is followed by a mandatory top-model review of the diff before commit** — never commit unreviewed local output — and logged to `.local-llm-log.jsonl` so the economics stay decidable.
+For tasks rated **mechanical or standard** by default; complex tasks are eligible when committed tests fully pin the behavior (see `references/local-llm.md`). When Ollama is available this is the **default** executor; without it, fall back to a sonnet subagent. The standalone `--local` flag forces this path for a one-off task. Process in `references/local-llm.md`; mechanics in `scripts/local_task.py`. **Every local run is followed by a mandatory top-model review of the diff before commit** — never commit unreviewed local output — and logged to `.local-llm-log.jsonl` so the economics stay decidable.

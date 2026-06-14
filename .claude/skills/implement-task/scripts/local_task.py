@@ -36,6 +36,8 @@ Rules:
   ===FILE: <relative/path>===
   <entire file content>
   ===END===
+- Do NOT wrap the file content in markdown code fences (no ```). The body between
+  the markers is the raw file, nothing else.
 - Only touch files listed as allowed in the brief. No other output format.
 - Make the failing test in the brief pass. Do not modify any test.
 - Follow the conventions excerpt exactly. No new dependencies. No TODO stubs.
@@ -64,9 +66,42 @@ def call_ollama(model: str, brief: str, timeout: int = 600) -> str:
         sys.exit(f"Ollama unreachable at {OLLAMA_URL} ({e}). Is `ollama serve` running?")
 
 
+def _strip_code_fence(text: str) -> str:
+    """Drop a leading ```lang line and trailing ``` that local models wrap files in,
+    even though the protocol says not to. Leaves fence-free content untouched."""
+    lines = text.split("\n")
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if lines and lines[0].lstrip().startswith("```"):
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if lines and lines[-1].strip() == "```":
+        lines.pop()
+    return "\n".join(lines)
+
+
 def extract_files(output: str) -> dict[str, str]:
-    pattern = re.compile(r"===FILE: (.+?)===\n(.*?)\n?===END===", re.DOTALL)
-    return {path.strip(): content for path, content in pattern.findall(output)}
+    """Parse ===FILE: path=== blocks. Tolerant of three drifts from the protocol:
+    wrapping the body in markdown fences; ending with ``` instead of ===END===;
+    and writing ===END (missing trailing ===). The block ends at the first of
+    ===END===, ===END, the next ===FILE:, or end-of-output."""
+    files: dict[str, str] = {}
+    for block in re.split(r"===FILE:\s*", output)[1:]:  # [0] is any preamble
+        header, sep, body = block.partition("===")
+        if not sep:
+            continue
+        path = header.strip()
+        # Cut the block at its terminator (===END=== handled by the split removing
+        # the next marker; a stray ``` terminator is handled by the fence stripper).
+        for marker in ("===END===", "===END"):
+            end = body.find(marker)
+            if end != -1:
+                body = body[:end]
+                break
+        if path:
+            files[path] = _strip_code_fence(body)
+    return files
 
 
 def main() -> None:
