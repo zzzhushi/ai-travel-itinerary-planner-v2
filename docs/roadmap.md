@@ -28,7 +28,7 @@ Status: draft (awaiting slicing approval) · Date: 2026-06-12
 **Demo:** `python run_cli.py --version` prints the version; `GET /health` returns 200; CI is green; a trivial use-case emits one log line carrying every field in the observability schema.
 **Exit criteria:**
 - [ ] `uv run ruff check && uv run mypy && uv run pytest -q` all pass in CI — proven by the CI run
-- [ ] coverage ratchet active (build fails if coverage drops) — proven by CI config + a baseline
+- [ ] coverage gate active (build fails if coverage drops below 70%) — proven by CI config
 - [ ] a log line shows `correlation_id`, `trace_id`, `component`, `operation`, `outcome` — `test_observability_schema`
 - [ ] both delivery surfaces boot — `test_cli_version`, `test_health_endpoint`
 **Validation:** `python run_cli.py --version` · `uv run uvicorn tripplanner.web.app:app` then `curl localhost:8000/health` · push branch, watch CI.
@@ -40,7 +40,7 @@ Status: draft (awaiting slicing approval) · Date: 2026-06-12
 | 3 | `observability/logging.py` — structlog JSON + stdout/file sinks + schema fields | standard | sonnet | follows standards schema | 2 |
 | 4 | `observability/tracing.py` + `context.py` — OTel spans/events + correlation/trip binding | complex | opus | tracing wiring, subtly wrong-able | 3 |
 | 5 | pre-commit (ruff + gitleaks) + activate repo hooks | mechanical | haiku | config | 1 |
-| 6 | CI workflow: lint, types, tests, coverage ratchet | standard | sonnet | CI yaml + ratchet | 1 |
+| 6 | CI workflow: lint, types, tests, coverage gate | standard | sonnet | CI yaml + gate | 1 |
 | 7 | FastAPI app + `/health`; CLI `--version` | standard | sonnet | dual-delivery skeleton | 2 |
 | 8 | walking-skeleton use-case + smoke tests (schema, version, health) | standard | sonnet | end-to-end wire | 3,4,7 |
 

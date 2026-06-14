@@ -42,8 +42,7 @@ Run the verify command before every commit:
 uv run ruff check && uv run mypy && uv run pytest -q
 ```
 
-Coverage is a **ratchet, not a target**: CI fails if it drops below
-`.coverage-baseline`, and the floor only rises when you commit an improved value.
+Coverage is gated at **70%**: CI fails if it drops below that floor (`scripts/coverage_gate.py`).
 The full quality bar — including the observability field schema — lives in
 [docs/engineering-standards.md](docs/engineering-standards.md).
 

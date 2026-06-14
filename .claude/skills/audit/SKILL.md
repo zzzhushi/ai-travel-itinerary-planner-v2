@@ -18,7 +18,7 @@ Compare reality against `docs/engineering-standards.md`, looking for drift that 
 - Duplication — same logic grown independently in 2+ places (parallel execution makes this the top suspect)
 - Dead code — unreferenced functions, never-true branches, orphaned files
 - Boundary erosion — pydantic-at-boundaries violated, Protocols multiplying without second implementations or mocks, module dependency cycles
-- Test health — assertion-free tests, suppression comments without justification, coverage-ratchet bypasses
+- Test health — assertion-free tests, suppression comments without justification, coverage-gate bypasses
 - Use the built-in `/simplify` for reuse/simplification candidates; fold its output into findings
 
 ## 3. Documentation freshness
