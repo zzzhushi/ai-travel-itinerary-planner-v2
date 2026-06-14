@@ -7,7 +7,7 @@ Decision rules for all code in this project. These are rules, not aspirations �
 - Every public function/endpoint gets a happy-path test AND a failure-path test (bad input, dependency down).
 - Every bug fix lands with a regression test that fails on the old code.
 - Test behavior through the public interface, not implementation details. If a refactor that preserves behavior breaks the test, the test was wrong.
-- Coverage is a CI ratchet: the build fails if coverage drops below the previous main-branch value. Never write tests "to raise coverage" — write them to pin behavior; coverage follows.
+- Coverage is gated at 70%: CI fails if total coverage drops below that floor. Never write tests "to raise coverage" — write them to pin behavior; coverage follows.
 - A test with no meaningful assertion is worse than no test (it certifies nothing and costs maintenance). Each test asserts on output values or observable effects, not just "it didn't throw".
 
 ## Observability
