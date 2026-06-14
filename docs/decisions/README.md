@@ -12,3 +12,4 @@ One file per decision where a real alternative was seriously considered (the gat
 | [004](004-persistence-sqlite-cache.md) | SQLite with a TTL place-cache separate from durable tables | accepted |
 | [005](005-web-delivery.md) | Web delivery: FastAPI + Jinja2/htmx + Leaflet (over React SPA) | accepted |
 | [006](006-observability.md) | Observability: OTel spans + events, structured schema, agent-debuggable | accepted |
+| [007](007-travel-time-rounding.md) | Travel-time estimates rounded up to nearest 15 min for realistic buffering | accepted |
