@@ -18,4 +18,4 @@ Token-routing fix (motivated by M0 burning ~all-opus):
 Noted, no change:
 - Stop-hook vs. Step-1 committed-failing-tests — self-resolves via the hook's `stop_hook_active` escape hatch.
 - `--subissues` gh mechanics (native link needs `-F` integer id; `gh issue close` is one-at-a-time) — too tool-specific to codify.
-- Positive: the two-lens review design worked — Step-4 verification (spec compliance) passed M0, then `/ship`'s `/code-review` (adversarial bug-hunt) caught a real ratchet bug. Different lenses, both earning their place.
+- Positive: the two-lens review design worked — Step-4 verification (spec compliance) passed M0, then `/ship`'s `/code-review` (adversarial bug-hunt) caught a real coverage-gate bug. Different lenses, both earning their place.
