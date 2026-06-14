@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Run a mechanical coding task on a local model via Ollama.
 
-Reads a curated brief (markdown), asks the model for complete replacement
-files, writes only whitelisted paths, and appends an experiment record to
-.local-llm-log.jsonl. Review of the resulting diff is the CALLER's job —
-this script never commits.
+Opens a tool-calling loop so the model can read project files lazily via the
+read_file tool, then writes only whitelisted paths once the model emits
+===FILE=== blocks. Appends an experiment record to .local-llm-log.jsonl.
+Review of the resulting diff is the CALLER's job — this script never commits.
 
 Usage:
   local_task.py --brief brief.md --allow src/foo.py --allow tests/test_foo.py
@@ -21,52 +21,138 @@ import sys
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
-
-# The local coding model. Override per-call with --model, or globally with
-# TRIPPLANNER_LOCAL_MODEL. Default is the model this project was set up with.
-DEFAULT_MODEL = os.environ.get("TRIPPLANNER_LOCAL_MODEL", "qwen3.6:latest")
 from pathlib import Path
+
+DEFAULT_MODEL = os.environ.get("TRIPPLANNER_LOCAL_MODEL", "qwen3.6:latest")
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
 LOG_PATH = Path(".local-llm-log.jsonl")
 
+_MAX_TOOL_ROUNDS = 20  # guard against runaway read loops
+
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "read_file",
+            "description": "Read the current content of a file in the project.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path from the project root, e.g. src/foo.py",
+                    }
+                },
+                "required": ["path"],
+            },
+        },
+    }
+]
+
 SYSTEM_PROMPT = """You are implementing one small, fully-specified coding task.
-Rules:
-- Output COMPLETE replacement contents for each file you change, as:
+You have a read_file tool — call it for any file you need to inspect before editing.
+When you have all the context you need, output COMPLETE replacement contents for each
+file you change, as:
   ===FILE: <relative/path>===
   <entire file content>
   ===END===
+- Do NOT wrap file content in markdown code fences (no ```). Raw file only.
 - Only touch files listed as allowed in the brief. No other output format.
-- Make the failing test in the brief pass. Do not modify any test.
+- Make the failing test pass. Do not modify any test.
 - Follow the conventions excerpt exactly. No new dependencies. No TODO stubs.
 """
 
 
+def _execute_read_file(path: str) -> str:
+    p = Path(path)
+    if ".." in p.parts:
+        return "Error: path traversal not allowed"
+    if not p.exists():
+        return f"Error: file not found: {path}"
+    return p.read_text()
+
+
 def call_ollama(model: str, brief: str, timeout: int = 600) -> str:
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": brief},
-        ],
-        "stream": False,
-        "options": {"temperature": 0.1, "num_ctx": 32768},
-    }
-    req = urllib.request.Request(
-        OLLAMA_URL,
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read())["message"]["content"]
-    except urllib.error.URLError as e:
-        sys.exit(f"Ollama unreachable at {OLLAMA_URL} ({e}). Is `ollama serve` running?")
+    """Run the Ollama tool-calling loop. Executes read_file calls as they arrive;
+    returns the final text response containing ===FILE=== blocks."""
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": brief},
+    ]
+    for _ in range(_MAX_TOOL_ROUNDS):
+        payload = {
+            "model": model,
+            "messages": messages,
+            "tools": TOOLS,
+            "stream": False,
+            "options": {"temperature": 0.1, "num_ctx": 32768},
+        }
+        req = urllib.request.Request(
+            OLLAMA_URL,
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                msg = json.loads(resp.read())["message"]
+        except urllib.error.URLError as e:
+            sys.exit(f"Ollama unreachable at {OLLAMA_URL} ({e}). Is `ollama serve` running?")
+
+        tool_calls = msg.get("tool_calls") or []
+        if not tool_calls:
+            return msg.get("content", "")
+
+        # Append the assistant's tool-call turn, then each tool result.
+        messages.append({"role": "assistant", "content": msg.get("content", ""), "tool_calls": tool_calls})
+        for tc in tool_calls:
+            fn = tc.get("function", {})
+            name = fn.get("name", "")
+            raw_args = fn.get("arguments", {})
+            args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+            if name == "read_file":
+                result = _execute_read_file(args.get("path", ""))
+            else:
+                result = f"Error: unknown tool {name}"
+            messages.append({"role": "tool", "content": result})
+
+    sys.exit(f"Tool loop exceeded {_MAX_TOOL_ROUNDS} rounds without producing ===FILE=== output.")
+
+
+def _strip_code_fence(text: str) -> str:
+    """Drop a leading ```lang line and trailing ``` that local models wrap files in,
+    even though the protocol says not to. Leaves fence-free content untouched."""
+    lines = text.split("\n")
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if lines and lines[0].lstrip().startswith("```"):
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if lines and lines[-1].strip() == "```":
+        lines.pop()
+    return "\n".join(lines)
 
 
 def extract_files(output: str) -> dict[str, str]:
-    pattern = re.compile(r"===FILE: (.+?)===\n(.*?)\n?===END===", re.DOTALL)
-    return {path.strip(): content for path, content in pattern.findall(output)}
+    """Parse ===FILE: path=== blocks. Tolerant of three drifts from the protocol:
+    wrapping the body in markdown fences; ending with ``` instead of ===END===;
+    and writing ===END (missing trailing ===). The block ends at the first of
+    ===END===, ===END, the next ===FILE:, or end-of-output."""
+    files: dict[str, str] = {}
+    for block in re.split(r"===FILE:\s*", output)[1:]:  # [0] is any preamble
+        header, sep, body = block.partition("===")
+        if not sep:
+            continue
+        path = header.strip()
+        for marker in ("===END===", "===END"):
+            end = body.find(marker)
+            if end != -1:
+                body = body[:end]
+                break
+        if path:
+            files[path] = _strip_code_fence(body)
+    return files
 
 
 def main() -> None:
@@ -82,7 +168,7 @@ def main() -> None:
         brief += "\n\n## Previous attempt failed verification:\n" + Path(args.repair_log).read_text()
     brief += "\n\n## Allowed files (write ONLY these):\n" + "\n".join(f"- {p}" for p in args.allow)
 
-    # crude token estimate; the 32k curation budget is enforced here, not trusted to the model
+    # Initial brief token estimate; each read_file response grows the context further.
     est_tokens = len(brief) // 4
     if est_tokens > 32_000:
         sys.exit(f"Brief ~{est_tokens} tokens, exceeds 32k curation budget. Trim it.")

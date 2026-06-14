@@ -6,18 +6,18 @@ That mechanical- and standard-rated tasks can be implemented by a local model (f
 
 ## Qualification (all must hold)
 
-- Task rated `mechanical` or `standard` at milestone-planning time (never re-rated here). Complex tasks never route here.
-- A committed failing test already pins the behavior.
-- Touched files total < ~500 lines and the curated brief fits in ≤32k tokens (local model quality degrades hard past that, regardless of advertised context).
+- A **committed failing test** already pins the behavior — this is the primary gate. Without it there is no mechanical way to verify local output before review.
+- Touched files total < ~500 lines and the curated brief fits in ≤32k tokens (local model quality degrades past that regardless of advertised context).
 - No security surface, no concurrency, no new dependencies.
+- Task rated `mechanical` or `standard` by default. **Complex tasks are eligible** if the brief can be curated fully — complexity raises the brief-curation cost, but is not a hard ban. M2 eval confirmed complex algorithmic tasks (k-means, constraint-slotting) pass when committed tests are strong and the full file is in the brief.
 
 Fails any check → run the task normally on the cloud model and say so.
 
 ## Process
 
-1. **Curate the brief** (this is where the engineering lives — the local model gets conclusions, not exploration ability): task description; full contents of files to modify; signatures/docstrings of interfaces it must call (not their bodies); the failing test verbatim; a ≤20-line excerpt of relevant conventions from `docs/engineering-standards.md`; explicit list of files it may write.
+1. **Curate the brief** (this is where the engineering lives — the local model gets conclusions, not exploration ability): task description; paths of files to modify (the model calls `read_file` to fetch them — for small files, <~80 lines, pasting the full text is also fine); signatures/docstrings of interfaces it must call (not their bodies); the failing test verbatim; a ≤20-line excerpt of relevant conventions from `docs/engineering-standards.md`; explicit list of files it may write. **No `<PASTE_FILE>` placeholder tokens** — the model copies them literally; either paste the text or let the model fetch it, never a placeholder.
 2. **Run** `scripts/local_task.py --brief <file>` — model defaults to `$TRIPPLANNER_LOCAL_MODEL` or `qwen3.6:latest`; override with `--model` (e.g. a coding-specialized `qwen3-coder` / `devstral` if pulled). Requires Ollama serving (`ollama serve`; the model loads into memory on first call). The script calls the model, extracts complete-file outputs, and writes ONLY whitelisted paths.
-3. **Verify mechanically:** ruff, mypy, pytest. Up to 2 repair round-trips through the script (append the error output to the brief); after that, discard and implement on the cloud model.
+3. **Verify and repair:** run `uv run ruff check && uv run mypy && uv run pytest -q`. If it fails, save the output to a temp file and re-run with `--repair-log <output_file>` — the script appends the errors to the brief automatically. Up to 2 repair rounds; after 2, discard and implement on the cloud model.
 4. **Top-model review (you, now):** read the full diff against the brief and guardrails — convention violations, hardcoding, edge cases. Fix or reject. **Never commit unreviewed local-model output.**
 5. **Log the data point** — the script appends to `.local-llm-log.jsonl`: model, brief token estimate, repair rounds, review findings count, accepted/rejected. `/retro` reads this log to call the experiment.
 
