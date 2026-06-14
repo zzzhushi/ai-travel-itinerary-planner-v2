@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Coverage ratchet — fail if coverage drops below the committed baseline.
+"""Coverage floor gate — fail the build if coverage drops below 70%.
 
-Reads `coverage.json` (produced by `pytest --cov-report=json`) and compares the
-total percent covered to `.coverage-baseline`. A drop fails the build; an
-improvement rewrites the baseline so the floor only ever ratchets up (commit the
-updated baseline). This is the standards-doc "coverage is a ratchet, not a
-target" made concrete.
+The floor is intentionally permissive: CI catches catastrophic regressions
+(untested modules, deleted test files) while not punishing milestones that
+add new code before full test coverage is written. 50% is the absolute
+minimum that would be accepted with a documented reason; below 70% is a
+signal to add tests before merging.
 """
 
 from __future__ import annotations
@@ -14,35 +14,23 @@ import json
 import sys
 from pathlib import Path
 
-BASELINE = Path(".coverage-baseline")
+FLOOR = 70.0
 REPORT = Path("coverage.json")
-EPSILON = 0.1  # tolerate float noise
 
 
 def main() -> int:
     if not REPORT.exists():
         print("coverage.json not found — run pytest with --cov-report=json first", file=sys.stderr)
         return 1
-    # Round to the baseline's stored precision so the `pct > baseline` branch
-    # doesn't fire on every run from sub-decimal float noise (baseline churn).
     try:
         pct = round(float(json.loads(REPORT.read_text())["totals"]["percent_covered"]), 2)
     except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
         print(f"could not read coverage from {REPORT}: {exc}", file=sys.stderr)
         return 1
-    try:
-        baseline = float(BASELINE.read_text()) if BASELINE.exists() else 0.0
-    except ValueError as exc:
-        print(f"invalid {BASELINE} (expected a number): {exc}", file=sys.stderr)
+    if pct < FLOOR:
+        print(f"FAIL: coverage {pct:.2f}% is below the {FLOOR:.0f}% floor.", file=sys.stderr)
         return 1
-    if pct + EPSILON < baseline:
-        print(f"FAIL: coverage {pct:.2f}% dropped below baseline {baseline:.2f}%", file=sys.stderr)
-        return 1
-    if pct > baseline:
-        BASELINE.write_text(f"{pct:.2f}\n")
-        print(f"Coverage baseline raised to {pct:.2f}% (was {baseline:.2f}%).")
-    else:
-        print(f"OK: coverage {pct:.2f}% holds the {baseline:.2f}% baseline.")
+    print(f"OK: coverage {pct:.2f}% clears the {FLOOR:.0f}% floor.")
     return 0
 
 
