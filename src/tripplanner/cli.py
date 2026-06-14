@@ -1,7 +1,4 @@
-"""Command-line entry point. Thin: parse args, delegate to application use-cases.
-
-M0 ships `--version`; M1 adds `schedule <fixture.json>`.
-"""
+"""Command-line entry point. Thin: parse args, delegate to application use-cases."""
 
 from __future__ import annotations
 

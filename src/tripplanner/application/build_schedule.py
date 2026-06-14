@@ -1,4 +1,4 @@
-"""build_schedule use-case: wire the single-day engine with observability (M1 task 5)."""
+"""build_schedule use-case: wire the single-day engine with observability."""
 
 from __future__ import annotations
 

@@ -1,7 +1,4 @@
-"""Application configuration via pydantic-settings (env / .env).
-
-Grows as milestones add external services; M0 needs only the log destination.
-"""
+"""Application configuration via pydantic-settings (env / .env)."""
 
 from __future__ import annotations
 

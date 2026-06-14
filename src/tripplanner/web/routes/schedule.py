@@ -1,4 +1,4 @@
-"""POST /schedule — build a single-day itinerary from a JSON trip description (M1)."""
+"""POST /schedule — build a single-day itinerary from a JSON trip description."""
 
 from __future__ import annotations
 

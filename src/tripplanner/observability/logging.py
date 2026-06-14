@@ -2,7 +2,7 @@
 
 A failed run must be diagnosable from these logs alone (ADR-006). Logs go to
 stdout and `logs/app.jsonl`; tests pass a `stream` to capture them. File
-rotation is deferred past M0 — when it lands, switch this to stdlib logging with
+rotation is not yet implemented — when it lands, switch this to stdlib logging with
 a RotatingFileHandler and retire `_Tee`.
 """
 

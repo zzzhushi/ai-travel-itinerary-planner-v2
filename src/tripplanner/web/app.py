@@ -1,8 +1,8 @@
-"""FastAPI application (ADR-005). M0 ships only /health over the walking skeleton.
+"""FastAPI application (ADR-005).
 
-A per-request correlation-id middleware is deferred to a later milestone (the
-Starlette context-propagation caveat makes it more than a one-liner); for now
-the span ensures a correlation id exists.
+A per-request correlation-id middleware is not yet wired (the Starlette
+context-propagation caveat makes it more than a one-liner); for now the span
+ensures a correlation id exists.
 """
 
 from __future__ import annotations

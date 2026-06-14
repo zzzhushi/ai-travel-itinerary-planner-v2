@@ -15,7 +15,7 @@ _EARTH_RADIUS_KM = 6371.0
 
 def haversine_minutes(a: Coord, b: Coord) -> int:
     """Great-circle distance between two coords, converted to whole minutes of
-    travel at an assumed urban speed. Implemented in M1 task 3."""
+    travel at an assumed urban speed."""
     lat1 = math.radians(a.lat)
     lat2 = math.radians(b.lat)
     dlat = math.radians(b.lat - a.lat)
