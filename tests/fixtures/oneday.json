@@ -1,0 +1,57 @@
+{
+  "city": "Lisbon",
+  "day": "2026-07-01",
+  "lodging_name": "Hotel Bairro Alto",
+  "lodging_lat": 38.7139,
+  "lodging_lng": -9.1434,
+  "day_start_hhmm": "09:00",
+  "day_end_hhmm": "19:00",
+  "places": [
+    {
+      "id": "miradouro-santa-catarina",
+      "name": "Miradouro de Santa Catarina",
+      "category": "viewpoint",
+      "lat": 38.7093,
+      "lng": -9.1490,
+      "opens_hhmm": "09:00",
+      "closes_hhmm": "22:00"
+    },
+    {
+      "id": "museu-nacional-azulejo",
+      "name": "Museu Nacional do Azulejo",
+      "category": "museum",
+      "lat": 38.7241,
+      "lng": -9.1108,
+      "opens_hhmm": "10:00",
+      "closes_hhmm": "18:00"
+    },
+    {
+      "id": "castelo-sao-jorge",
+      "name": "Castelo de São Jorge",
+      "category": "landmark",
+      "lat": 38.7139,
+      "lng": -9.1334,
+      "opens_hhmm": "09:00",
+      "closes_hhmm": "21:00"
+    },
+    {
+      "id": "time-out-market",
+      "name": "Time Out Market",
+      "category": "market",
+      "lat": 38.7066,
+      "lng": -9.1452,
+      "opens_hhmm": "10:00",
+      "closes_hhmm": "23:30",
+      "duration_min": 60
+    },
+    {
+      "id": "lx-factory",
+      "name": "LX Factory",
+      "category": "market",
+      "lat": 38.7031,
+      "lng": -9.1772,
+      "opens_hhmm": "10:00",
+      "closes_hhmm": "20:00"
+    }
+  ]
+}
