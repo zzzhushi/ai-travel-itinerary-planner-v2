@@ -50,7 +50,7 @@ def _apply_meals(
     for mw in meal_windows:
         for i, rp in enumerate(result):
             place = rp.place
-            if rp.place.id in used or place.category not in FOOD_CATEGORIES:
+            if rp.place.id in used or place.category.lower() not in FOOD_CATEGORIES:
                 continue
             new_open = max(place.opens_min, mw.earliest_min)
             new_close = min(place.closes_min, mw.latest_min)

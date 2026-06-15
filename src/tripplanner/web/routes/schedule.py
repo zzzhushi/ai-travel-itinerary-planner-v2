@@ -102,8 +102,8 @@ class MultiDayTripRequest(BaseModel):
     lodging_name: str
     lodging_lat: float
     lodging_lng: float
-    arrival_hhmm: str
-    departure_hhmm: str
+    arrival_hhmm: str | None = None
+    departure_hhmm: str | None = None
     day_start_hhmm: str
     day_end_hhmm: str
     places: list[PlaceIn]
@@ -125,8 +125,8 @@ async def post_schedule_multiday(body: MultiDayTripRequest) -> ScheduleResponse:
         day_end_min=_hhmm(body.day_end_hhmm),
         places=tuple(p.to_ranked() for p in body.places),
         num_days=body.num_days,
-        arrival_min=_hhmm(body.arrival_hhmm),
-        departure_min=_hhmm(body.departure_hhmm),
+        arrival_min=_hhmm(body.arrival_hhmm) if body.arrival_hhmm else None,
+        departure_min=_hhmm(body.departure_hhmm) if body.departure_hhmm else None,
         walking_tolerance=body.walking_tolerance,
         plan_meals=body.plan_meals,
         meal_windows=tuple(
