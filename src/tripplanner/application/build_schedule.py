@@ -1,4 +1,4 @@
-"""Schedule-build use-cases: wire the routing engines with observability (M1/M2)."""
+"""build_schedule use-case: wire the single-day engine with observability."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from tripplanner.observability import Component, add_event, span
 from tripplanner.services.travel import haversine_minutes
 
 TravelFn = Callable[[Coord, Coord], int]
-
 
 def build_schedule(trip: Trip, travel_fn: TravelFn | None = None) -> Itinerary:
     """Route a single-day trip. Defaults to haversine travel; accepts an injected

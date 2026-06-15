@@ -1,4 +1,4 @@
-"""Pure formatting helpers: domain objects → display strings (M1 task 5, M2 task 5)."""
+"""Pure formatting helpers: domain objects → display strings"""
 
 from __future__ import annotations
 

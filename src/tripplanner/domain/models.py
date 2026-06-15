@@ -1,6 +1,6 @@
-"""Domain models for the single-day routing engine (M1).
+"""Domain models for the single-day routing engine.
 
-Pure data, no I/O (ADR-002). Times are **minutes since midnight** (int) so the
+Pure data, no I/O. Times are **minutes since midnight** (int) so the
 scheduler can do plain arithmetic; render to HH:MM only at the edges.
 """
 
@@ -29,7 +29,7 @@ class Place:
 @dataclass(frozen=True)
 class RankedPlace:
     place: Place
-    rating: int = 3  # 1-5; M1 routes by travel only — priority lands in M3
+    rating: int = 3  # 1-5; currently unused in routing — reserved for priority-based ordering
     duration_override_min: int | None = None
 
 
@@ -76,12 +76,10 @@ class Itinerary:
     def is_feasible(self) -> bool:
         return not self.unscheduled
 
-
 # --- Multi-day (M2) --------------------------------------------------------
 # Additive over the single-day engine: the multi-day orchestrator clusters
 # places into day-areas and calls the M1 single-day scheduler per day. The M1
 # `Trip`/`Itinerary` shapes above are unchanged.
-
 
 @dataclass(frozen=True)
 class MealWindow:

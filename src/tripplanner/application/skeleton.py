@@ -1,7 +1,7 @@
-"""Walking-skeleton use-case — one slice through the whole stack (M0).
+"""Walking-skeleton use-case — one slice through the whole stack.
 
 Proves the wiring and observability end to end: it runs inside a span and emits
-a fully-schema'd log line. Later milestones replace this with real use-cases.
+a fully-schema'd log line.
 """
 
 from __future__ import annotations

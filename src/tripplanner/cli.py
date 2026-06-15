@@ -1,8 +1,4 @@
-"""Command-line entry point. Thin: parse args, delegate to application use-cases.
-
-M0 ships `--version`; M1 adds single-day `schedule <fixture.json>`; M2 makes the
-same command route multi-day fixtures (those carrying `num_days`).
-"""
+"""Command-line entry point. Thin: parse args, delegate to application use-cases."""
 
 from __future__ import annotations
 
@@ -25,11 +21,9 @@ from tripplanner.domain.models import (
     Trip,
 )
 
-
 def _hhmm(s: str) -> int:
     h, m = s.split(":")
     return int(h) * 60 + int(m)
-
 
 def _parse_place(p: dict[str, Any]) -> RankedPlace:
     return RankedPlace(
@@ -43,7 +37,6 @@ def _parse_place(p: dict[str, Any]) -> RankedPlace:
         ),
         duration_override_min=p.get("duration_min"),
     )
-
 
 def _lodging(data: dict[str, Any]) -> Lodging:
     return Lodging(
@@ -108,6 +101,36 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sched.add_argument("fixture", help="path to trip JSON file")
     return parser
+
+
+def _cmd_schedule(fixture_path: str) -> None:
+    data = json.loads(Path(fixture_path).read_text())
+    trip = Trip(
+        city=data["city"],
+        day=date.fromisoformat(data["day"]),
+        lodging=Lodging(
+            name=data["lodging_name"],
+            coord=Coord(lat=data["lodging_lat"], lng=data["lodging_lng"]),
+        ),
+        day_start_min=_hhmm(data["day_start_hhmm"]),
+        day_end_min=_hhmm(data["day_end_hhmm"]),
+        places=tuple(
+            RankedPlace(
+                place=Place(
+                    id=p["id"],
+                    name=p["name"],
+                    category=p["category"],
+                    coord=Coord(lat=p["lat"], lng=p["lng"]),
+                    opens_min=_hhmm(p["opens_hhmm"]),
+                    closes_min=_hhmm(p["closes_hhmm"]),
+                ),
+                duration_override_min=p.get("duration_min"),
+            )
+            for p in data["places"]
+        ),
+    )
+    itin = build_schedule(trip)
+    print(format_day(itin))
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -1,4 +1,4 @@
-"""Per-place visit durations: category defaults with a per-place override (M1 task 2)."""
+"""Per-place visit durations: category defaults with a per-place override."""
 
 from __future__ import annotations
 
@@ -18,12 +18,11 @@ _CATEGORY_DEFAULTS: dict[str, int] = {
 
 _FALLBACK_MIN = 60
 
-# Categories eligible to fill a meal window (M2 meal slotting).
+# Categories eligible to fill a meal window.
 FOOD_CATEGORIES: frozenset[str] = frozenset({"restaurant", "cafe"})
-
 
 def resolve_duration_min(ranked: RankedPlace) -> int:
     """Minutes to spend at a place: the per-place override, else the category default."""
     if ranked.duration_override_min is not None:
         return ranked.duration_override_min
-    return _CATEGORY_DEFAULTS.get(ranked.place.category, _FALLBACK_MIN)
+    return _CATEGORY_DEFAULTS.get(ranked.place.category.lower(), _FALLBACK_MIN)

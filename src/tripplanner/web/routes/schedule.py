@@ -1,4 +1,4 @@
-"""Schedule endpoints — single-day (M1) and multi-day (M2) from a JSON trip body."""
+"""POST /schedule — build a single-day and multi day itinerary from a JSON trip description."""
 
 from __future__ import annotations
 
