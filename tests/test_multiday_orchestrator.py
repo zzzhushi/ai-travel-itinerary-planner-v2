@@ -13,9 +13,9 @@ from tripplanner.domain.models import (
     Coord,
     Lodging,
     MealWindow,
-    MultiDayTrip,
     Place,
     RankedPlace,
+    Trip,
 )
 from tripplanner.domain.multiday import schedule_trip
 
@@ -61,17 +61,17 @@ def _trip(
     plan_meals: bool = False,
     meal_windows: tuple[MealWindow, ...] = (),
     walking_tolerance: float = 1.0,
-) -> MultiDayTrip:
-    return MultiDayTrip(
+) -> Trip:
+    return Trip(
         city="C",
         start_date=date(2026, 7, 1),
-        num_days=num_days,
         lodging=_LODGING,
-        arrival_min=_hm(9),
-        departure_min=_hm(20),
         day_start_min=_hm(9),
         day_end_min=_hm(20),
         places=places,
+        num_days=num_days,
+        arrival_min=_hm(9),
+        departure_min=_hm(20),
         plan_meals=plan_meals,
         meal_windows=meal_windows,
         walking_tolerance=walking_tolerance,

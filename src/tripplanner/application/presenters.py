@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tripplanner.domain.models import Day, Itinerary, MultiDayItinerary, RankedPlace
+from tripplanner.domain.models import Day, Itinerary, RankedPlace
 
 
 def _fmt(minutes: int) -> str:
@@ -55,14 +55,15 @@ def _unscheduled_line(unscheduled: tuple[RankedPlace, ...]) -> str:
 
 def format_day(itin: Itinerary) -> str:
     """Human-readable single-day itinerary. Returns a string; caller prints."""
-    lines: list[str] = [f"Day {itin.day.date.isoformat()}"]
-    lines.extend(_day_block(itin.day))
+    day = itin.days[0]
+    lines: list[str] = [f"Day {day.date.isoformat()}"]
+    lines.extend(_day_block(day))
     if itin.unscheduled:
         lines.append(_unscheduled_line(itin.unscheduled))
     return "\n".join(lines)
 
 
-def format_multiday(itin: MultiDayItinerary) -> str:
+def format_multiday(itin: Itinerary) -> str:
     """Human-readable multi-day itinerary: a numbered, dated block per day, then
     any places that did not fit. Returns a string; caller prints."""
     lines: list[str] = []

@@ -9,13 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from tripplanner import __version__
-from tripplanner.application.build_schedule import build_multiday_schedule, build_schedule
+from tripplanner.application.build_schedule import build_schedule
 from tripplanner.application.presenters import format_day, format_multiday
 from tripplanner.domain.models import (
     Coord,
     Lodging,
     MealWindow,
-    MultiDayTrip,
     Place,
     RankedPlace,
     Trip,
@@ -47,25 +46,6 @@ def _lodging(data: dict[str, Any]) -> Lodging:
 
 def _cmd_schedule(fixture_path: str) -> None:
     data = json.loads(Path(fixture_path).read_text())
-    if "num_days" in data:
-        _schedule_multiday(data)
-    else:
-        _schedule_single_day(data)
-
-
-def _schedule_single_day(data: dict[str, Any]) -> None:
-    trip = Trip(
-        city=data["city"],
-        day=date.fromisoformat(data["day"]),
-        lodging=_lodging(data),
-        day_start_min=_hhmm(data["day_start_hhmm"]),
-        day_end_min=_hhmm(data["day_end_hhmm"]),
-        places=tuple(_parse_place(p) for p in data["places"]),
-    )
-    print(format_day(build_schedule(trip)))
-
-
-def _schedule_multiday(data: dict[str, Any]) -> None:
     meal_windows = tuple(
         MealWindow(
             name=mw["name"],
@@ -75,21 +55,25 @@ def _schedule_multiday(data: dict[str, Any]) -> None:
         )
         for mw in data.get("meal_windows", [])
     )
-    trip = MultiDayTrip(
+    trip = Trip(
         city=data["city"],
         start_date=date.fromisoformat(data["start_date"]),
-        num_days=data["num_days"],
         lodging=_lodging(data),
-        arrival_min=_hhmm(data["arrival_hhmm"]),
-        departure_min=_hhmm(data["departure_hhmm"]),
         day_start_min=_hhmm(data["day_start_hhmm"]),
         day_end_min=_hhmm(data["day_end_hhmm"]),
         places=tuple(_parse_place(p) for p in data["places"]),
+        num_days=data.get("num_days", 1),
+        arrival_min=_hhmm(data["arrival_hhmm"]) if "arrival_hhmm" in data else None,
+        departure_min=_hhmm(data["departure_hhmm"]) if "departure_hhmm" in data else None,
         walking_tolerance=data.get("walking_tolerance", 1.0),
         plan_meals=data.get("plan_meals", False),
         meal_windows=meal_windows,
     )
-    print(format_multiday(build_multiday_schedule(trip)))
+    itin = build_schedule(trip)
+    if trip.num_days == 1:
+        print(format_day(itin))
+    else:
+        print(format_multiday(itin))
 
 
 def _build_parser() -> argparse.ArgumentParser:

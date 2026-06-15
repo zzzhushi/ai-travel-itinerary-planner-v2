@@ -21,14 +21,14 @@ def _place(pid: str) -> Place:
 
 def _empty_itinerary() -> Itinerary:
     return Itinerary(
-        day=Day(date=date(2026, 7, 1), stops=(), return_travel_min=0),
+        days=(Day(date=date(2026, 7, 1), stops=(), return_travel_min=0),),
     )
 
 
 def _infeasible_itinerary() -> Itinerary:
     unscheduled = (RankedPlace(place=_place("A")), RankedPlace(place=_place("B")))
     return Itinerary(
-        day=Day(date=date(2026, 7, 1), stops=(), return_travel_min=0),
+        days=(Day(date=date(2026, 7, 1), stops=(), return_travel_min=0),),
         unscheduled=unscheduled,
     )
 
@@ -59,7 +59,7 @@ def test_format_day_uses_hhmm_not_raw_minutes() -> None:
         travel_from_prev_min=30,
     )
     itin = Itinerary(
-        day=Day(date=date(2026, 7, 1), stops=(stop,), return_travel_min=20),
+        days=(Day(date=date(2026, 7, 1), stops=(stop,), return_travel_min=20),),
     )
     output = format_day(itin)
     assert "09:30" in output

@@ -27,8 +27,6 @@ from tripplanner.domain.models import (
     Day,
     Itinerary,
     MealWindow,
-    MultiDayItinerary,
-    MultiDayTrip,
     RankedPlace,
     Trip,
 )
@@ -66,7 +64,7 @@ def _apply_meals(
 
 def _schedule_day(
     day_places: Sequence[RankedPlace],
-    trip: MultiDayTrip,
+    trip: Trip,
     day_date: date,
     start: int,
     end: int,
@@ -74,7 +72,7 @@ def _schedule_day(
 ) -> Itinerary:
     day_trip = Trip(
         city=trip.city,
-        day=day_date,
+        start_date=day_date,
         lodging=trip.lodging,
         day_start_min=start,
         day_end_min=end,
@@ -85,7 +83,7 @@ def _schedule_day(
 
 def _schedule_day_within_cap(
     day_places: list[RankedPlace],
-    trip: MultiDayTrip,
+    trip: Trip,
     day_date: date,
     start: int,
     end: int,
@@ -102,27 +100,27 @@ def _schedule_day_within_cap(
     active = list(day_places)
     result = _schedule_day(active, trip, day_date, start, end, travel_min)
 
-    while result.day.total_travel_min() > cap and len(result.day.stops) > 1:
-        scheduled_ids = {s.place.id for s in result.day.stops}
+    while result.days[0].total_travel_min() > cap and len(result.days[0].stops) > 1:
+        scheduled_ids = {s.place.id for s in result.days[0].stops}
         best: tuple[int, list[RankedPlace], Itinerary] | None = None
         for rp in active:
             if rp.place.id not in scheduled_ids:
                 continue
             trial = [x for x in active if x.place.id != rp.place.id]
             trial_result = _schedule_day(trial, trip, day_date, start, end, travel_min)
-            total = trial_result.day.total_travel_min()
+            total = trial_result.days[0].total_travel_min()
             if best is None or total < best[0]:
                 best = (total, trial, trial_result)
         if best is None:  # unreachable: the loop guard guarantees a scheduled stop
             raise RuntimeError("walking-cap trim found no scheduled stop to drop")
         _, active, result = best
 
-    scheduled_ids = {s.place.id for s in result.day.stops}
+    scheduled_ids = {s.place.id for s in result.days[0].stops}
     unscheduled = [rp for rp in day_places if rp.place.id not in scheduled_ids]
-    return result.day, unscheduled
+    return result.days[0], unscheduled
 
 
-def schedule_trip(trip: MultiDayTrip, travel_min: TravelMinutes) -> MultiDayItinerary:
+def schedule_trip(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
     """Produce a multi-day itinerary: compact day-areas, per-day TSPTW within the
     (possibly partial) day window, meal picks slotted into their windows when
     enabled, and each day's walking kept within the tolerance budget. Places that
@@ -148,4 +146,4 @@ def schedule_trip(trip: MultiDayTrip, travel_min: TravelMinutes) -> MultiDayItin
         original_by_id = {rp.place.id: rp for rp in cluster}
         unscheduled.extend(original_by_id[rp.place.id] for rp in day_unscheduled)
 
-    return MultiDayItinerary(days=tuple(days), unscheduled=tuple(unscheduled))
+    return Itinerary(days=tuple(days), unscheduled=tuple(unscheduled))

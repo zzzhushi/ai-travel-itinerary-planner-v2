@@ -7,13 +7,12 @@ from datetime import date
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from tripplanner.application.build_schedule import build_multiday_schedule, build_schedule
+from tripplanner.application.build_schedule import build_schedule
 from tripplanner.application.presenters import format_day, format_multiday
 from tripplanner.domain.models import (
     Coord,
     Lodging,
     MealWindow,
-    MultiDayTrip,
     Place,
     RankedPlace,
     Trip,
@@ -53,7 +52,7 @@ class PlaceIn(BaseModel):
 
 class TripRequest(BaseModel):
     city: str
-    day: str  # ISO date "YYYY-MM-DD"
+    start_date: str  # ISO date "YYYY-MM-DD"
     lodging_name: str
     lodging_lat: float
     lodging_lng: float
@@ -72,7 +71,7 @@ class ScheduleResponse(BaseModel):
 async def post_schedule(body: TripRequest) -> ScheduleResponse:
     trip = Trip(
         city=body.city,
-        day=date.fromisoformat(body.day),
+        start_date=date.fromisoformat(body.start_date),
         lodging=Lodging(
             name=body.lodging_name,
             coord=Coord(lat=body.lodging_lat, lng=body.lodging_lng),
@@ -115,19 +114,19 @@ class MultiDayTripRequest(BaseModel):
 
 @router.post("/schedule/multiday", status_code=201)
 async def post_schedule_multiday(body: MultiDayTripRequest) -> ScheduleResponse:
-    trip = MultiDayTrip(
+    trip = Trip(
         city=body.city,
         start_date=date.fromisoformat(body.start_date),
-        num_days=body.num_days,
         lodging=Lodging(
             name=body.lodging_name,
             coord=Coord(lat=body.lodging_lat, lng=body.lodging_lng),
         ),
-        arrival_min=_hhmm(body.arrival_hhmm),
-        departure_min=_hhmm(body.departure_hhmm),
         day_start_min=_hhmm(body.day_start_hhmm),
         day_end_min=_hhmm(body.day_end_hhmm),
         places=tuple(p.to_ranked() for p in body.places),
+        num_days=body.num_days,
+        arrival_min=_hhmm(body.arrival_hhmm),
+        departure_min=_hhmm(body.departure_hhmm),
         walking_tolerance=body.walking_tolerance,
         plan_meals=body.plan_meals,
         meal_windows=tuple(
@@ -140,7 +139,7 @@ async def post_schedule_multiday(body: MultiDayTripRequest) -> ScheduleResponse:
             for mw in body.meal_windows
         ),
     )
-    itin = build_multiday_schedule(trip)
+    itin = build_schedule(trip)
     return ScheduleResponse(
         feasible=itin.is_feasible,
         day_view=format_multiday(itin),

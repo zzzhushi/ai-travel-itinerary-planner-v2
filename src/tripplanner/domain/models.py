@@ -1,6 +1,6 @@
-"""Domain models for the single-day routing engine.
+"""Domain models for the routing engine (M1 + M2).
 
-Pure data, no I/O. Times are **minutes since midnight** (int) so the
+Pure data, no I/O (ADR-002). Times are **minutes since midnight** (int) so the
 scheduler can do plain arithmetic; render to HH:MM only at the edges.
 """
 
@@ -29,7 +29,7 @@ class Place:
 @dataclass(frozen=True)
 class RankedPlace:
     place: Place
-    rating: int = 3  # 1-5; currently unused in routing — reserved for priority-based ordering
+    rating: int = 3  # 1-5; M1 routes by travel only — priority lands in M3
     duration_override_min: int | None = None
 
 
@@ -40,13 +40,38 @@ class Lodging:
 
 
 @dataclass(frozen=True)
+class MealWindow:
+    """A reserved eating slot. When meal planning is on, a food pick is
+    constrained to land inside [earliest_min, latest_min]."""
+
+    name: str  # "lunch", "dinner"
+    earliest_min: int
+    latest_min: int  # must be seated/served by this time
+    duration_min: int
+
+
+@dataclass(frozen=True)
 class Trip:
+    """A trip of one or more consecutive days.
+
+    Single-day (num_days == 1): uses day_start_min → day_end_min; arrival_min
+    and departure_min are ignored. Multi-day (num_days > 1): arrival_min
+    constrains day 1, departure_min constrains the last day, middle days use
+    the full [day_start_min, day_end_min] window. Both partial-day fields
+    default to None so single-day construction stays concise."""
+
     city: str
-    day: date
+    start_date: date
     lodging: Lodging
-    day_start_min: int  # earliest you can leave lodging
-    day_end_min: int  # must be back at lodging by this time
+    day_start_min: int  # earliest you can leave lodging (normal days)
+    day_end_min: int  # must be back at lodging by this time (normal days)
     places: tuple[RankedPlace, ...]
+    num_days: int = 1
+    arrival_min: int | None = None  # day 1 cannot leave lodging before this
+    departure_min: int | None = None  # last day must return by this
+    walking_tolerance: float = 1.0  # <1 tightens spread (less walking); >1 permits more
+    plan_meals: bool = False
+    meal_windows: tuple[MealWindow, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -69,51 +94,6 @@ class Day:
 
 @dataclass(frozen=True)
 class Itinerary:
-    day: Day
-    unscheduled: tuple[RankedPlace, ...] = ()  # ranked places that did not fit (over-full day)
-
-    @property
-    def is_feasible(self) -> bool:
-        return not self.unscheduled
-
-# --- Multi-day (M2) --------------------------------------------------------
-# Additive over the single-day engine: the multi-day orchestrator clusters
-# places into day-areas and calls the M1 single-day scheduler per day. The M1
-# `Trip`/`Itinerary` shapes above are unchanged.
-
-@dataclass(frozen=True)
-class MealWindow:
-    """A reserved eating slot. When meal planning is on, a food pick is
-    constrained to land inside [earliest_min, latest_min]."""
-
-    name: str  # "lunch", "dinner"
-    earliest_min: int
-    latest_min: int  # must be seated/served by this time
-    duration_min: int
-
-
-@dataclass(frozen=True)
-class MultiDayTrip:
-    """A trip spanning num_days consecutive dates from start_date. Day 1 begins
-    at arrival_min (partial first day); the last day ends at departure_min
-    (partial last day); middle days use the [day_start_min, day_end_min] window."""
-
-    city: str
-    start_date: date
-    num_days: int
-    lodging: Lodging
-    arrival_min: int  # day 1 cannot leave lodging before this
-    departure_min: int  # last day must be back at lodging by this
-    day_start_min: int  # normal (middle-day) window start
-    day_end_min: int  # normal (middle-day) window end
-    places: tuple[RankedPlace, ...]
-    walking_tolerance: float = 1.0  # <1 tightens spread (less walking); >1 permits more
-    plan_meals: bool = False
-    meal_windows: tuple[MealWindow, ...] = ()
-
-
-@dataclass(frozen=True)
-class MultiDayItinerary:
     days: tuple[Day, ...]
     unscheduled: tuple[RankedPlace, ...] = ()
 

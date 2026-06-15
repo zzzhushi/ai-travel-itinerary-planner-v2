@@ -5,27 +5,25 @@ from __future__ import annotations
 from datetime import date
 
 from tripplanner.domain.budgets import day_windows
-from tripplanner.domain.models import Coord, Lodging, MultiDayTrip
+from tripplanner.domain.models import Coord, Lodging, Trip
 
 
-def _trip(
-    num_days: int, arrival: int, departure: int, ds: int = 540, de: int = 1080
-) -> MultiDayTrip:
-    return MultiDayTrip(
+def _trip(num_days: int, arrival: int, departure: int, ds: int = 540, de: int = 1080) -> Trip:
+    return Trip(
         city="C",
         start_date=date(2026, 7, 1),
-        num_days=num_days,
         lodging=Lodging(name="h", coord=Coord(lat=0.0, lng=0.0)),
-        arrival_min=arrival,
-        departure_min=departure,
         day_start_min=ds,
         day_end_min=de,
         places=(),
+        num_days=num_days,
+        arrival_min=arrival,
+        departure_min=departure,
     )
 
 
-def test_single_day_uses_arrival_and_departure() -> None:
-    assert day_windows(_trip(1, 600, 1000)) == [(600, 1000)]
+def test_single_day_uses_day_window() -> None:
+    assert day_windows(_trip(1, 600, 1000)) == [(540, 1080)]
 
 
 def test_first_day_starts_at_arrival() -> None:

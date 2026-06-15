@@ -39,7 +39,7 @@ def test_build_schedule_returns_itinerary() -> None:
     data = _fixture_data()
     trip = Trip(
         city=data["city"],
-        day=date.fromisoformat(data["day"]),
+        start_date=date.fromisoformat(data["start_date"]),
         lodging=Lodging(
             name=data["lodging_name"],
             coord=Coord(lat=data["lodging_lat"], lng=data["lodging_lng"]),
@@ -62,7 +62,7 @@ def test_build_schedule_returns_itinerary() -> None:
         ),
     )
     itin = build_schedule(trip)
-    assert len(itin.day.stops) > 0
+    assert len(itin.days[0].stops) > 0
 
 
 # ---------------------------------------------------------------------------

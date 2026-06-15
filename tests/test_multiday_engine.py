@@ -12,13 +12,13 @@ from datetime import date
 from tripplanner.domain.clustering import cluster_places
 from tripplanner.domain.models import (
     Coord,
+    Itinerary,
     Lodging,
     MealWindow,
-    MultiDayItinerary,
-    MultiDayTrip,
     Place,
     RankedPlace,
     ScheduledStop,
+    Trip,
 )
 from tripplanner.domain.multiday import schedule_trip
 
@@ -55,11 +55,11 @@ def _ranked(
 _LODGING = Lodging(name="hotel", coord=Coord(lat=0.0, lng=0.0))
 
 
-def _all_stops(itin: MultiDayItinerary) -> list[ScheduledStop]:
+def _all_stops(itin: Itinerary) -> list[ScheduledStop]:
     return [s for day in itin.days for s in day.stops]
 
 
-def _find(itin: MultiDayItinerary, pid: str) -> ScheduledStop | None:
+def _find(itin: Itinerary, pid: str) -> ScheduledStop | None:
     return next((s for s in _all_stops(itin) if s.place.id == pid), None)
 
 
@@ -74,17 +74,17 @@ def _trip(
     walking_tolerance: float = 1.0,
     plan_meals: bool = False,
     meal_windows: tuple[MealWindow, ...] = (),
-) -> MultiDayTrip:
-    return MultiDayTrip(
+) -> Trip:
+    return Trip(
         city="Testville",
         start_date=date(2026, 7, 1),
-        num_days=num_days,
         lodging=_LODGING,
-        arrival_min=arrival_min,
-        departure_min=departure_min,
         day_start_min=day_start_min,
         day_end_min=day_end_min,
         places=places,
+        num_days=num_days,
+        arrival_min=arrival_min,
+        departure_min=departure_min,
         walking_tolerance=walking_tolerance,
         plan_meals=plan_meals,
         meal_windows=meal_windows,
@@ -121,13 +121,10 @@ def test_partial_days() -> None:
     # Day 1 cannot start before a 14:00 arrival; the last day must be home by a
     # 16:00 departure. Two near clusters so both partial windows are satisfiable.
     arrival, departure = _hm(14), _hm(16)
-    trip = MultiDayTrip(
+    trip = Trip(
         city="Testville",
         start_date=date(2026, 7, 1),
-        num_days=2,
         lodging=_LODGING,
-        arrival_min=arrival,
-        departure_min=departure,
         day_start_min=_hm(9),
         day_end_min=_hm(18),
         places=(
@@ -136,6 +133,9 @@ def test_partial_days() -> None:
             _ranked("B0", -5.0, 0.0),
             _ranked("B1", -5.0, 1.0),
         ),
+        num_days=2,
+        arrival_min=arrival,
+        departure_min=departure,
     )
     itin = schedule_trip(trip, _grid_travel)
 

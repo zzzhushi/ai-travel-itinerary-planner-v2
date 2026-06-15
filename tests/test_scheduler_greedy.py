@@ -29,7 +29,7 @@ def test_late_opener_does_not_strand_an_early_place() -> None:
     # fit; the feasible order is B then A. Both must be scheduled.
     trip = Trip(
         city="Testville",
-        day=date(2026, 7, 1),
+        start_date=date(2026, 7, 1),
         lodging=Lodging(name="hotel", coord=Coord(lat=0.0, lng=0.0)),
         day_start_min=_hm(9),
         day_end_min=_hm(18),
@@ -60,5 +60,5 @@ def test_late_opener_does_not_strand_an_early_place() -> None:
     )
     itin = schedule(trip, _grid_travel)
     assert itin.is_feasible, "both places fit in order B then A"
-    scheduled_ids = [stop.place.id for stop in itin.day.stops]
+    scheduled_ids = [stop.place.id for stop in itin.days[0].stops]
     assert scheduled_ids == ["B", "A"]

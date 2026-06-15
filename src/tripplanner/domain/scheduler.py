@@ -180,6 +180,6 @@ def schedule(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
 
     stops, return_travel = result
     return Itinerary(
-        day=Day(date=trip.day, stops=tuple(stops), return_travel_min=return_travel),
+        days=(Day(date=trip.start_date, stops=tuple(stops), return_travel_min=return_travel),),
         unscheduled=tuple(unscheduled),
     )
