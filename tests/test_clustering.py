@@ -1,4 +1,4 @@
-"""Unit tests for day-clustering edge cases (M2 task 1).
+"""Unit tests for day-clustering edge cases.
 
 The exit-criteria test pins the multi-group recovery; these pin the boundaries.
 """
@@ -55,3 +55,43 @@ def test_every_place_assigned_exactly_once() -> None:
     assigned = [rp for c in clusters for rp in c]
     assert len(assigned) == len(places)
     assert {rp.place.id for rp in assigned} == {rp.place.id for rp in places}
+
+
+# ---------------------------------------------------------------------------
+# Pairwise-threshold guarantee (complete-linkage semantics)
+# ---------------------------------------------------------------------------
+
+
+def test_pairwise_threshold_enforced() -> None:
+    # A→B = 15 min, A→C = 30 min, B→C ≈ 34 min.
+    # With threshold=15: {A,B} can merge (max=15), but adding C makes max=34 > 15.
+    # B and C must therefore end up in separate clusters.
+    a = _ranked("A", 0.0, 0.0)
+    b = _ranked("B", 1.5, 0.0)  # A→B = round(1.5*10) = 15 min
+    c = _ranked("C", 0.0, 3.0)  # A→C = 30 min, B→C ≈ 34 min
+    clusters = cluster_places((a, b, c), num_days=2, travel_min=_grid_travel, threshold_min=15)
+    for cids in [{rp.place.id for rp in cl} for cl in clusters]:
+        assert not (
+            {"B", "C"} <= cids
+        ), "B and C (pairwise ≈ 34 min) must not share a cluster at threshold=15"
+
+
+def test_all_nearby_places_cohere_on_one_day() -> None:
+    # Four places in a line, each 0.5 units apart → pairwise ≤ 15 min; all within threshold=30.
+    # With num_days=2, they should all land on the same day (the other day is empty).
+    places = tuple(_ranked(f"P{i}", i * 0.5, 0.0) for i in range(4))
+    clusters = cluster_places(places, num_days=2, travel_min=_grid_travel, threshold_min=30)
+    assert sum(len(c) for c in clusters) == 4
+    assert max(len(c) for c in clusters) == 4  # all 4 in one day
+
+
+def test_two_far_groups_stay_on_separate_days() -> None:
+    # Two tight groups separated by 90 min of travel — they must land on different days.
+    near = [_ranked(f"A{i}", i * 0.5, 0.0) for i in range(3)]  # internal ≤ 10 min
+    far = [_ranked(f"B{i}", 10.0 + i * 0.5, 0.0) for i in range(3)]  # 90+ min from near
+    clusters = cluster_places(
+        tuple(near + far), num_days=2, travel_min=_grid_travel, threshold_min=30
+    )
+    ids = [{rp.place.id for rp in c} for c in clusters]
+    assert any({"A0", "A1", "A2"} <= s for s in ids), "A group must be together"
+    assert any({"B0", "B1", "B2"} <= s for s in ids), "B group must be together"

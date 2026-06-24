@@ -53,3 +53,22 @@ def test_multiday_endpoint_rejects_malformed_body() -> None:
     # Missing required fields → Pydantic 422, not a 500.
     resp = _CLIENT.post("/schedule/multiday", json={"city": "Lisbon"})
     assert resp.status_code == 422
+
+
+def test_walking_neighborhood_min_accepted_and_defaults() -> None:
+    # walking_neighborhood_min=15 is accepted; omitting it also works (default=30).
+    base = {
+        "city": "Tokyo",
+        "start_date": "2026-07-01",
+        "lodging_name": "Hotel",
+        "lodging_lat": 35.67,
+        "lodging_lng": 139.73,
+        "day_start_hhmm": "09:00",
+        "day_end_hhmm": "18:00",
+        "places": [_place("A", 35.66, 139.70), _place("B", 35.67, 139.71)],
+    }
+    resp_tight = _CLIENT.post("/schedule", json={**base, "walking_neighborhood_min": 15})
+    assert resp_tight.status_code == 201, resp_tight.text
+
+    resp_default = _CLIENT.post("/schedule", json=base)
+    assert resp_default.status_code == 201, resp_default.text

@@ -122,7 +122,9 @@ def schedule_trip(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
     apply meal picks, and enforce the walking-tolerance budget. Single-day trips
     (num_days=1) skip clustering and go through the same per-day path."""
     windows = day_windows(trip)
-    clusters = cluster_places(trip.places, trip.num_days, travel_min)
+    clusters = cluster_places(
+        trip.places, trip.num_days, travel_min, threshold_min=trip.walking_neighborhood_min
+    )
     cap = round(_BASE_DAILY_WALKING_MIN * trip.walking_tolerance)
 
     days: list[Day] = []

@@ -81,6 +81,7 @@ class TripRequest(BaseModel):
     day_start_hhmm: str
     day_end_hhmm: str
     places: list[PlaceIn]
+    walking_neighborhood_min: int = 30
 
 
 class MultiDayTripRequest(BaseModel):
@@ -98,6 +99,7 @@ class MultiDayTripRequest(BaseModel):
     day_end_hhmm: str
     places: list[PlaceIn]
     walking_tolerance: float = 1.0
+    walking_neighborhood_min: int = 30
     plan_meals: bool = False
     meal_windows: list[MealWindowIn] = []
 
@@ -127,6 +129,7 @@ async def post_schedule(body: TripRequest) -> ScheduleResponse:
         day_start_min=_hhmm(body.day_start_hhmm),
         day_end_min=_hhmm(body.day_end_hhmm),
         places=tuple(p.to_ranked() for p in body.places),
+        walking_neighborhood_min=body.walking_neighborhood_min,
     )
     itin = build_schedule(trip)
     return ScheduleResponse(
@@ -151,6 +154,7 @@ async def post_schedule_multiday(body: MultiDayTripRequest) -> ScheduleResponse:
         num_days=body.num_days,
         arrival_min=_hhmm(body.arrival_hhmm) if body.arrival_hhmm else None,
         departure_min=_hhmm(body.departure_hhmm) if body.departure_hhmm else None,
+        walking_neighborhood_min=body.walking_neighborhood_min,
         walking_tolerance=body.walking_tolerance,
         plan_meals=body.plan_meals,
         meal_windows=tuple(

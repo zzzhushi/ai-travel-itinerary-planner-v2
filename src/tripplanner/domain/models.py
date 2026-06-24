@@ -69,6 +69,7 @@ class Trip:
     num_days: int = 1
     arrival_min: int | None = None  # day 1 cannot leave lodging before this
     departure_min: int | None = None  # last day must return by this
+    walking_neighborhood_min: int = 30  # pairwise walk-time threshold for area clustering
     walking_tolerance: float = 1.0  # <1 tightens spread (less walking); >1 permits more
     plan_meals: bool = False
     meal_windows: tuple[MealWindow, ...] = ()
