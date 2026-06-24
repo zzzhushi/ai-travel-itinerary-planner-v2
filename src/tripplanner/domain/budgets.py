@@ -1,4 +1,4 @@
-"""Per-day time windows, including partial first/last days (M2 task 2)."""
+"""Per-day time windows, including partial first/last days."""
 
 from __future__ import annotations
 

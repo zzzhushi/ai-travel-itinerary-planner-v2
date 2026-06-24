@@ -53,19 +53,9 @@ def _unscheduled_line(unscheduled: tuple[RankedPlace, ...]) -> str:
     return f"\n⚠ Did not fit ({len(unscheduled)}): {names}"
 
 
-def format_day(itin: Itinerary) -> str:
-    """Human-readable single-day itinerary. Returns a string; caller prints."""
-    day = itin.days[0]
-    lines: list[str] = [f"Day {day.date.isoformat()}"]
-    lines.extend(_day_block(day))
-    if itin.unscheduled:
-        lines.append(_unscheduled_line(itin.unscheduled))
-    return "\n".join(lines)
-
-
-def format_multiday(itin: Itinerary) -> str:
-    """Human-readable multi-day itinerary: a numbered, dated block per day, then
-    any places that did not fit. Returns a string; caller prints."""
+def format_itinerary(itin: Itinerary) -> str:
+    """Human-readable itinerary: a numbered, dated block per day, then any
+    unscheduled places. Works for single- and multi-day trips."""
     lines: list[str] = []
     for n, day in enumerate(itin.days, start=1):
         lines.append(f"Day {n} — {day.date.isoformat()}")

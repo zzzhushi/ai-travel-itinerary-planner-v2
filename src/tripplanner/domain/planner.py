@@ -1,16 +1,12 @@
-"""Multi-day routing orchestrator (M2).
+"""Trip-planning orchestrator: cluster places into day-areas, route each day.
 
-Clusters places into day-areas (clustering.py), then schedules each day with the
-M1 single-day engine inside that day's window — honoring partial first/last days,
-optional meal windows, and the walking-tolerance budget. Pure domain (ADR-002):
-travel time is the injected callable; the M1 scheduler is reused unchanged.
+Handles trips of any length (num_days=1 through N). For each day: partitions
+places geographically via clustering.py, applies meal-window constraints,
+schedules the day with the single-day TSPTW engine, and trims to the
+walking-tolerance budget. Places that do not fit any day land in
+`Itinerary.unscheduled` — never silently dropped.
 
-Mechanisms:
-- partial days: each day's window comes from budgets.day_windows (task 2).
-- meals: a food pick's effective hours are clamped to the meal window, so the
-  existing TSPTW slots it there — no new constraint machinery (task 3).
-- walking tolerance: a per-day walking budget (base * tolerance) trims the
-  farthest-marginal stop until the day's travel fits the budget (task 4).
+The single-day engine (scheduler.py) is called once per day cluster.
 """
 
 from __future__ import annotations
@@ -90,7 +86,7 @@ def _schedule_day_within_cap(
     cap: int,
     travel_min: TravelMinutes,
 ) -> tuple[Day, list[RankedPlace]]:
-    """Schedule a day, then trim it to the walking cap by repeatedly dropping the
+    """Schedule a day, then trim to the walking cap by repeatedly dropping the
     stop whose removal most reduces total travel. Returns the day and the places
     that ended up unscheduled (both trimmed and never-fit).
 
@@ -121,10 +117,10 @@ def _schedule_day_within_cap(
 
 
 def schedule_trip(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
-    """Produce a multi-day itinerary: compact day-areas, per-day TSPTW within the
-    (possibly partial) day window, meal picks slotted into their windows when
-    enabled, and each day's walking kept within the tolerance budget. Places that
-    do not fit any day are returned in `unscheduled` — never silently dropped."""
+    """Plan a trip of any length: cluster places into compact day-areas, route
+    each day within its time window (honoring partial arrival/departure days),
+    apply meal picks, and enforce the walking-tolerance budget. Single-day trips
+    (num_days=1) skip clustering and go through the same per-day path."""
     windows = day_windows(trip)
     clusters = cluster_places(trip.places, trip.num_days, travel_min)
     cap = round(_BASE_DAILY_WALKING_MIN * trip.walking_tolerance)

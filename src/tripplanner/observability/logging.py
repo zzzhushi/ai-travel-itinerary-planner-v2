@@ -1,6 +1,6 @@
 """structlog configuration: JSON logs carrying the observability field schema.
 
-A failed run must be diagnosable from these logs alone (ADR-006). Logs go to
+A failed run must be diagnosable from these logs alone. Logs go to
 stdout and `logs/app.jsonl`; tests pass a `stream` to capture them. File
 rotation is not yet implemented — when it lands, switch this to stdlib logging with
 a RotatingFileHandler and retire `_Tee`.

@@ -10,7 +10,7 @@ from typing import Any
 
 from tripplanner import __version__
 from tripplanner.application.build_schedule import build_schedule
-from tripplanner.application.presenters import format_day, format_multiday
+from tripplanner.application.presenters import format_itinerary
 from tripplanner.domain.models import (
     Coord,
     Lodging,
@@ -72,11 +72,7 @@ def _cmd_schedule(fixture_path: str) -> None:
         plan_meals=data.get("plan_meals", False),
         meal_windows=meal_windows,
     )
-    itin = build_schedule(trip)
-    if trip.num_days == 1:
-        print(format_day(itin))
-    else:
-        print(format_multiday(itin))
+    print(format_itinerary(build_schedule(trip)))
 
 
 def _build_parser() -> argparse.ArgumentParser:

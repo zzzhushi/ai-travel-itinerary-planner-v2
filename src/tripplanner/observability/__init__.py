@@ -1,4 +1,4 @@
-"""Observability: structured logging + tracing with a shared field schema (ADR-006)."""
+"""Observability: structured logging + tracing with a shared field schema."""
 
 from __future__ import annotations
 

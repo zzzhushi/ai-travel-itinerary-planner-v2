@@ -1,12 +1,11 @@
-"""Schedule-build use-case: wire the routing engines with observability (M1/M2)."""
+"""Schedule-build use-case: wire the routing engine with observability."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
 from tripplanner.domain.models import Coord, Itinerary, Trip
-from tripplanner.domain.multiday import schedule_trip
-from tripplanner.domain.scheduler import schedule
+from tripplanner.domain.planner import schedule_trip
 from tripplanner.observability import Component, add_event, span
 from tripplanner.services.travel import haversine_minutes
 
@@ -15,12 +14,11 @@ TravelFn = Callable[[Coord, Coord], int]
 
 def build_schedule(trip: Trip, travel_fn: TravelFn | None = None) -> Itinerary:
     """Route a trip (single- or multi-day). Defaults to haversine travel; accepts
-    an injected callable for testing. Single-day trips use the M1 scheduler directly;
-    multi-day trips go through the M2 orchestrator."""
+    an injected callable for testing."""
     fn = travel_fn if travel_fn is not None else haversine_minutes
     with span("schedule.build", component=Component.DOMAIN):
         add_event("build_schedule started", days=trip.num_days, places=len(trip.places))
-        itin = schedule(trip, fn) if trip.num_days == 1 else schedule_trip(trip, fn)
+        itin = schedule_trip(trip, fn)
         add_event(
             "build_schedule complete",
             feasible=itin.is_feasible,

@@ -1,4 +1,4 @@
-"""M2 exit-criteria tests for the multi-day routing engine.
+"""Exit-criteria tests for the multi-day routing engine.
 
 Deterministic and fixture-built (no network). Travel time is injected as a grid
 function so the assertions are exact. These tests are immutable once committed.
@@ -20,7 +20,7 @@ from tripplanner.domain.models import (
     ScheduledStop,
     Trip,
 )
-from tripplanner.domain.multiday import schedule_trip
+from tripplanner.domain.planner import schedule_trip
 
 
 def _hm(hour: int, minute: int = 0) -> int:

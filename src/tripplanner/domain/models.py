@@ -1,6 +1,6 @@
-"""Domain models for the routing engine (M1 + M2).
+"""Domain models for the routing engine.
 
-Pure data, no I/O (ADR-002). Times are **minutes since midnight** (int) so the
+Pure data, no I/O. Times are **minutes since midnight** (int) so the
 scheduler can do plain arithmetic; render to HH:MM only at the edges.
 """
 
@@ -29,7 +29,7 @@ class Place:
 @dataclass(frozen=True)
 class RankedPlace:
     place: Place
-    rating: int = 3  # 1-5; M1 routes by travel only — priority lands in M3
+    rating: int = 3  # 1-5; currently unused by the router (priority routing not yet implemented)
     duration_override_min: int | None = None
 
 

@@ -1,4 +1,4 @@
-"""POST /schedule — build a single-day and multi day itinerary from a JSON trip description."""
+"""Schedule routes: POST /schedule and POST /schedule/multiday."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from tripplanner.application.build_schedule import build_schedule
-from tripplanner.application.presenters import format_day, format_multiday
+from tripplanner.application.presenters import format_itinerary
 from tripplanner.domain.models import (
     Coord,
     Lodging,
@@ -26,7 +26,18 @@ def _hhmm(s: str) -> int:
     return int(h) * 60 + int(m)
 
 
+# ---------------------------------------------------------------------------
+# Pydantic schemas (HTTP layer — JSON in/out; distinct from domain dataclasses)
+# ---------------------------------------------------------------------------
+# These sit at the HTTP boundary: they validate incoming JSON and shape the
+# response. Domain dataclasses (Trip, Itinerary, etc.) know nothing about HTTP;
+# these models know nothing about routing logic. The `to_ranked()` method on
+# PlaceIn is the only bridge between the two layers.
+
+
 class PlaceIn(BaseModel):
+    """One candidate place submitted by the caller."""
+
     id: str
     name: str
     category: str
@@ -50,7 +61,18 @@ class PlaceIn(BaseModel):
         )
 
 
+class MealWindowIn(BaseModel):
+    """A named eating slot the scheduler should fill with a restaurant visit."""
+
+    name: str
+    earliest_hhmm: str
+    latest_hhmm: str
+    duration_min: int
+
+
 class TripRequest(BaseModel):
+    """Request body for POST /schedule (single-day trip)."""
+
     city: str
     start_date: str  # ISO date "YYYY-MM-DD"
     lodging_name: str
@@ -61,10 +83,36 @@ class TripRequest(BaseModel):
     places: list[PlaceIn]
 
 
+class MultiDayTripRequest(BaseModel):
+    """Request body for POST /schedule/multiday."""
+
+    city: str
+    start_date: str  # ISO date "YYYY-MM-DD"
+    num_days: int
+    lodging_name: str
+    lodging_lat: float
+    lodging_lng: float
+    arrival_hhmm: str | None = None
+    departure_hhmm: str | None = None
+    day_start_hhmm: str
+    day_end_hhmm: str
+    places: list[PlaceIn]
+    walking_tolerance: float = 1.0
+    plan_meals: bool = False
+    meal_windows: list[MealWindowIn] = []
+
+
 class ScheduleResponse(BaseModel):
+    """Response body returned by both schedule endpoints."""
+
     feasible: bool
     day_view: str
     unscheduled: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 
 @router.post("/schedule", status_code=201)
@@ -83,33 +131,9 @@ async def post_schedule(body: TripRequest) -> ScheduleResponse:
     itin = build_schedule(trip)
     return ScheduleResponse(
         feasible=itin.is_feasible,
-        day_view=format_day(itin),
+        day_view=format_itinerary(itin),
         unscheduled=[rp.place.name for rp in itin.unscheduled],
     )
-
-
-class MealWindowIn(BaseModel):
-    name: str
-    earliest_hhmm: str
-    latest_hhmm: str
-    duration_min: int
-
-
-class MultiDayTripRequest(BaseModel):
-    city: str
-    start_date: str  # ISO date "YYYY-MM-DD"
-    num_days: int
-    lodging_name: str
-    lodging_lat: float
-    lodging_lng: float
-    arrival_hhmm: str | None = None
-    departure_hhmm: str | None = None
-    day_start_hhmm: str
-    day_end_hhmm: str
-    places: list[PlaceIn]
-    walking_tolerance: float = 1.0
-    plan_meals: bool = False
-    meal_windows: list[MealWindowIn] = []
 
 
 @router.post("/schedule/multiday", status_code=201)
@@ -142,6 +166,6 @@ async def post_schedule_multiday(body: MultiDayTripRequest) -> ScheduleResponse:
     itin = build_schedule(trip)
     return ScheduleResponse(
         feasible=itin.is_feasible,
-        day_view=format_multiday(itin),
+        day_view=format_itinerary(itin),
         unscheduled=[rp.place.name for rp in itin.unscheduled],
     )

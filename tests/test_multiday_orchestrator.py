@@ -1,4 +1,4 @@
-"""Unit tests for multi-day orchestration edges (M2 tasks 3, 4, orchestrator).
+"""Unit tests for trip-planner orchestration edges.
 
 The exit-criteria tests pin the headline behaviors; these pin invariants and
 boundaries the exit tests don't reach.
@@ -17,7 +17,7 @@ from tripplanner.domain.models import (
     RankedPlace,
     Trip,
 )
-from tripplanner.domain.multiday import schedule_trip
+from tripplanner.domain.planner import schedule_trip
 
 
 def _hm(h: int, m: int = 0) -> int:

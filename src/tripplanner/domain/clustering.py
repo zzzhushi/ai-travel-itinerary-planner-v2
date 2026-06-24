@@ -1,7 +1,7 @@
-"""Geographic day-clustering: group places into compact day-areas (M2 task 1).
+"""Geographic day-clustering: group places into compact day-areas.
 
-Pure domain (ADR-002). The distance metric is the injected travel callable, so
-the same function that costs the route also shapes the clusters.
+The distance metric is the injected travel callable, so the same function
+that costs the route also shapes the clusters.
 """
 
 from __future__ import annotations

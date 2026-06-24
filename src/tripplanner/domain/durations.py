@@ -1,4 +1,4 @@
-"""Per-place visit durations: category defaults with a per-place override (M1 task 2)."""
+"""Per-place visit durations: category defaults with a per-place override."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ _CATEGORY_DEFAULTS: dict[str, int] = {
 
 _FALLBACK_MIN = 60
 
-# Categories eligible to fill a meal window (M2 meal slotting).
+# Place categories eligible to fill a meal window.
 FOOD_CATEGORIES: frozenset[str] = frozenset({"restaurant"})
 
 

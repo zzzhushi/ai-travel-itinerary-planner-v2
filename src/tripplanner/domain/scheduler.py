@@ -1,9 +1,9 @@
 """Single-day routing: order stops to minimize travel within all constraints.
 
-Pure domain. Travel time is an injected callable (haversine lives in services/, and
-domain imports nothing from services — ADR-002).
+Pure domain. Travel time is an injected callable (haversine lives in services/,
+and domain imports nothing from services).
 
-Algorithm (ADR-003): greedy nearest-feasible insertion to get an initial ordering,
+Algorithm: greedy nearest-feasible insertion to get an initial ordering,
 then 2-opt local search to reduce total travel without violating time windows.
 Hard time-window anchors (fixed-time events) are not yet modelled.
 """
