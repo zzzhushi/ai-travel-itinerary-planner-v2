@@ -30,9 +30,55 @@ from tripplanner.domain.scheduler import schedule
 
 TravelMinutes = Callable[[Coord, Coord], int]
 
-# A full day's walking budget at walking_tolerance == 1.0 (minutes). The cap
-# scales linearly with tolerance; below it days are trimmed to stay compact.
-_BASE_DAILY_WALKING_MIN = 300
+_BASE_DAILY_WALKING_MIN = 300  # full-day walking budget at tolerance 1.0 (minutes)
+_MAX_ITERATIONS = 50  # k-means convergence cap for day assignment
+
+
+def _centroid(coords: list[Coord]) -> Coord:
+    n = len(coords)
+    return Coord(lat=sum(c.lat for c in coords) / n, lng=sum(c.lng for c in coords) / n)
+
+
+def _assign_clusters_to_days(
+    area_clusters: list[list[RankedPlace]],
+    num_days: int,
+    travel_min: TravelMinutes,
+) -> list[list[list[RankedPlace]]]:
+    """Assign area clusters to days using k-means on cluster centroids.
+
+    Returns a list of num_days day-groups, each a list of area clusters.
+    Geographically close clusters share a day. When anchors are introduced,
+    this function becomes the fallback for unanchored trips only."""
+    nc = len(area_clusters)
+    k = num_days
+    if nc <= k:
+        return [[c] for c in area_clusters] + [[] for _ in range(k - nc)]
+
+    centroids_of_clusters = [_centroid([rp.place.coord for rp in c]) for c in area_clusters]
+    sorted_idx = sorted(
+        range(nc), key=lambda i: (centroids_of_clusters[i].lat, centroids_of_clusters[i].lng)
+    )
+    day_centroids = [centroids_of_clusters[sorted_idx[i * nc // k]] for i in range(k)]
+
+    assignments: list[int] = [0] * nc
+    for _ in range(_MAX_ITERATIONS):
+        changed = False
+        for ci in range(nc):
+            best_day = min(
+                range(k),
+                key=lambda d: (travel_min(centroids_of_clusters[ci], day_centroids[d]), d),
+            )
+            if best_day != assignments[ci]:
+                assignments[ci] = best_day
+                changed = True
+        for d in range(k):
+            members = [centroids_of_clusters[ci] for ci in range(nc) if assignments[ci] == d]
+            if members:
+                day_centroids[d] = _centroid(members)
+        if not changed:
+            break
+
+    return [[area_clusters[ci] for ci in range(nc) if assignments[ci] == d] for d in range(k)]
 
 
 def _apply_meals(
@@ -122,9 +168,14 @@ def schedule_trip(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
     apply meal picks, and enforce the walking-tolerance budget. Single-day trips
     (num_days=1) skip clustering and go through the same per-day path."""
     windows = day_windows(trip)
-    clusters = cluster_places(
-        trip.places, trip.num_days, travel_min, threshold_min=trip.walking_neighborhood_min
-    )
+    if trip.num_days <= 1:
+        clusters: list[list[RankedPlace]] = [list(trip.places)]
+    else:
+        area_clusters = cluster_places(
+            trip.places, travel_min, threshold_min=trip.walking_neighborhood_min
+        )
+        day_groups = _assign_clusters_to_days(area_clusters, trip.num_days, travel_min)
+        clusters = [[rp for c in group for rp in c] for group in day_groups]
     cap = round(_BASE_DAILY_WALKING_MIN * trip.walking_tolerance)
 
     days: list[Day] = []

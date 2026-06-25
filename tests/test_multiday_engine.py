@@ -102,7 +102,7 @@ def test_days_compact() -> None:
     places = tuple(
         _ranked(f"{g}{i}", x, y) for g, pts in groups.items() for i, (x, y) in enumerate(pts)
     )
-    clusters = cluster_places(places, num_days=3, travel_min=_grid_travel)
+    clusters = cluster_places(places, travel_min=_grid_travel)
 
     assert len(clusters) == 3
     assert sorted(len(c) for c in clusters) == [3, 3, 3]
@@ -186,3 +186,24 @@ def test_walking_tolerance() -> None:
 
     assert len(_all_stops(low)) < len(_all_stops(high)), "low tolerance trims the far stop"
     assert low.total_travel_min() < high.total_travel_min(), "low tolerance walks less"
+
+
+def test_more_clusters_than_days_packs_by_geography() -> None:
+    # Three well-separated clusters (nc=3) packed into 2 days: exercises the k-means
+    # path in _assign_clusters_to_days (the nc <= k short-circuit is NOT taken).
+    # Groups are 3 units from the origin (~30 min) and >42 min apart from each other,
+    # so proximity clustering produces exactly 3 clusters. All 6 places fit within
+    # the 300-min walking cap (~109 min total travel for the busier day).
+    groups = {
+        "A": [(3.0, 0.0), (3.0, 0.5)],  # north
+        "B": [(0.0, 3.0), (0.5, 3.0)],  # east
+        "C": [(-3.0, 0.0), (-3.0, 0.5)],  # west
+    }
+    places = tuple(
+        _ranked(f"{g}{i}", x, y) for g, pts in groups.items() for i, (x, y) in enumerate(pts)
+    )
+    itin = schedule_trip(_trip(places, num_days=2), _grid_travel)
+
+    assert len(itin.days) == 2
+    # All 6 places must be scheduled — travel overhead is well within the cap.
+    assert sum(len(d.stops) for d in itin.days) == len(places)
