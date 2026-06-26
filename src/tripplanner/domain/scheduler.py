@@ -5,17 +5,22 @@ and domain imports nothing from services).
 
 Algorithm: greedy nearest-feasible insertion to get an initial ordering,
 then 2-opt local search to reduce total travel without violating time windows.
-Hard time-window anchors (fixed-time events) are not yet modelled.
+
+Fixed-time anchors (dinner reservations, timed entries) are placed at their
+exact times; the day is sliced into segments between consecutive anchors and
+flexible places are greedily fitted into each segment (see `_schedule_with_anchors`).
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from itertools import pairwise
 
 from tripplanner.domain.durations import resolve_duration_min
 from tripplanner.domain.models import (
     Coord,
     Day,
+    FixedAnchor,
     Itinerary,
     RankedPlace,
     ScheduledStop,
@@ -71,19 +76,27 @@ def _total_travel(stops: list[ScheduledStop], return_travel: int) -> int:
     return sum(s.travel_from_prev_min for s in stops) + return_travel
 
 
-def _greedy(
+def _greedy_segment(
     candidates: list[RankedPlace],
-    lodging: Coord,
-    day_start: int,
-    day_end: int,
+    start_coord: Coord,
+    start_time: int,
+    end_coord: Coord,
+    end_deadline: int,
     travel_min: TravelMinutes,
 ) -> tuple[list[RankedPlace], list[RankedPlace]]:
-    """Nearest-feasible greedy: at each step pick the reachable place with the
-    smallest travel cost. Returns (scheduled_order, unscheduled)."""
+    """Greedily fit flexible places into one time segment that begins at
+    (start_coord, start_time) and must arrive at end_coord no later than
+    end_deadline. At each step pick the earliest-finishing reachable place that
+    still leaves time to reach end_coord by the deadline. Returns
+    (scheduled_order, unscheduled).
+
+    The whole-day flexible schedule is the special case end_coord == lodging,
+    end_deadline == day_end; anchor segments reuse this with the next anchor's
+    location and arrival time as the deadline."""
     remaining = list(candidates)
     ordered: list[RankedPlace] = []
-    current_time = day_start
-    current_coord = lodging
+    current_time = start_time
+    current_coord = start_coord
 
     while remaining:
         # (rp, travel, depart) of the best feasible next stop found so far.
@@ -97,7 +110,7 @@ def _greedy(
 
             if depart > place.closes_min:
                 continue
-            if depart + travel_min(place.coord, lodging) > day_end:
+            if depart + travel_min(place.coord, end_coord) > end_deadline:
                 continue
 
             # Choose the earliest-finishing feasible stop, not the nearest: a
@@ -117,6 +130,18 @@ def _greedy(
         current_coord = best_rp.place.coord
 
     return ordered, remaining
+
+
+def _greedy(
+    candidates: list[RankedPlace],
+    lodging: Coord,
+    day_start: int,
+    day_end: int,
+    travel_min: TravelMinutes,
+) -> tuple[list[RankedPlace], list[RankedPlace]]:
+    """Whole-day greedy: the anchorless special case of `_greedy_segment` where
+    the route starts and ends at lodging within the day window."""
+    return _greedy_segment(candidates, lodging, day_start, lodging, day_end, travel_min)
 
 
 def _two_opt(
@@ -160,8 +185,25 @@ def _two_opt(
 def schedule(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
     """Route the trip's places into a single day respecting opening hours, visit
     durations, the day window, and the lodging commute. Places that can't fit are
-    returned in `Itinerary.unscheduled` (never silently dropped)."""
+    returned in `Itinerary.unscheduled` (never silently dropped).
+
+    Fixed-time anchors, if any, are seated at their exact times and flexible
+    places routed around them via segment slicing."""
     lodging = trip.lodging.coord
+
+    if trip.anchors:
+        stops, return_travel, unscheduled = _schedule_with_anchors(
+            list(trip.places),
+            trip.anchors,
+            lodging,
+            trip.day_start_min,
+            trip.day_end_min,
+            travel_min,
+        )
+        return Itinerary(
+            days=(Day(date=trip.start_date, stops=tuple(stops), return_travel_min=return_travel),),
+            unscheduled=tuple(unscheduled),
+        )
 
     ordered, unscheduled = _greedy(
         list(trip.places), lodging, trip.day_start_min, trip.day_end_min, travel_min
@@ -183,3 +225,107 @@ def schedule(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
         days=(Day(date=trip.start_date, stops=tuple(stops), return_travel_min=return_travel),),
         unscheduled=tuple(unscheduled),
     )
+
+
+def _schedule_with_anchors(
+    places: list[RankedPlace],
+    anchors: Sequence[FixedAnchor],
+    lodging: Coord,
+    day_start: int,
+    day_end: int,
+    travel_min: TravelMinutes,
+) -> tuple[list[ScheduledStop], int, list[RankedPlace]]:
+    """Seat each anchor at its exact time and greedily fill the segments between
+    them with flexible places. Anchors are sorted by arrival; the day is cut into
+    segments [previous fixed point -> next anchor] and a final [last anchor ->
+    lodging] leg, each filled by `_greedy_segment` so flexible stops never push an
+    anchor off its time. Returns (stops, return_travel_min, unscheduled).
+
+    Anchors are always seated, even if the chain is physically impossible — that
+    conflict is reported separately by `detect_anchor_conflicts` (a 409 pushback
+    is a first-class outcome, not a scheduling crash)."""
+    ordered_anchors = sorted(anchors, key=lambda a: a.arrival_min)
+    remaining = list(places)
+    stops: list[ScheduledStop] = []
+    current_time = day_start
+    current_coord = lodging
+
+    for anchor in ordered_anchors:
+        seg, remaining = _greedy_segment(
+            remaining,
+            current_coord,
+            current_time,
+            anchor.place.coord,
+            anchor.arrival_min,
+            travel_min,
+        )
+        for rp in seg:
+            travel = travel_min(current_coord, rp.place.coord)
+            arrive = max(current_time + travel, rp.place.opens_min)
+            depart = arrive + resolve_duration_min(rp)
+            stops.append(ScheduledStop(rp.place, arrive, depart, travel))
+            current_time, current_coord = depart, rp.place.coord
+
+        travel_to_anchor = travel_min(current_coord, anchor.place.coord)
+        stops.append(
+            ScheduledStop(
+                place=anchor.place,
+                arrive_min=anchor.arrival_min,
+                depart_min=anchor.arrival_min + anchor.duration_min,
+                travel_from_prev_min=travel_to_anchor,
+            )
+        )
+        current_time = anchor.arrival_min + anchor.duration_min
+        current_coord = anchor.place.coord
+
+    seg, remaining = _greedy_segment(
+        remaining, current_coord, current_time, lodging, day_end, travel_min
+    )
+    for rp in seg:
+        travel = travel_min(current_coord, rp.place.coord)
+        arrive = max(current_time + travel, rp.place.opens_min)
+        depart = arrive + resolve_duration_min(rp)
+        stops.append(ScheduledStop(rp.place, arrive, depart, travel))
+        current_time, current_coord = depart, rp.place.coord
+
+    return_travel = travel_min(current_coord, lodging)
+    return stops, return_travel, remaining
+
+
+def detect_anchor_conflicts(
+    anchors: Sequence[FixedAnchor],
+    lodging: Coord,
+    day_start: int,
+    day_end: int,
+    travel_min: TravelMinutes,
+) -> list[str]:
+    """Return human-readable reasons the anchor set cannot be honored, empty if it
+    can. Checks each anchor sits inside the day window and its own opening hours,
+    that the first is reachable from lodging in time, and that every consecutive
+    pair leaves enough travel time. Used by the feasibility pre-check before
+    building (a mutually-impossible anchor pair is a 409, not a silent drop)."""
+    conflicts: list[str] = []
+    ordered = sorted(anchors, key=lambda a: a.arrival_min)
+
+    for a in ordered:
+        end = a.arrival_min + a.duration_min
+        if a.arrival_min < day_start or end > day_end:
+            conflicts.append(f"anchor '{a.place.id}' falls outside the day window")
+        if a.arrival_min < a.place.opens_min or end > a.place.closes_min:
+            conflicts.append(f"anchor '{a.place.id}' falls outside its opening hours")
+
+    if ordered:
+        first = ordered[0]
+        if day_start + travel_min(lodging, first.place.coord) > first.arrival_min:
+            conflicts.append(f"anchor '{first.place.id}' is unreachable from lodging by its time")
+
+    for prev, nxt in pairwise(ordered):
+        available = nxt.arrival_min - (prev.arrival_min + prev.duration_min)
+        needed = travel_min(prev.place.coord, nxt.place.coord)
+        if available < needed:
+            conflicts.append(
+                f"cannot travel from anchor '{prev.place.id}' to '{nxt.place.id}' in time "
+                f"({needed} min needed, {available} min available)"
+            )
+
+    return conflicts

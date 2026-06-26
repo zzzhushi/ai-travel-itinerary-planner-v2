@@ -21,6 +21,7 @@ from tripplanner.domain.durations import FOOD_CATEGORIES
 from tripplanner.domain.models import (
     Coord,
     Day,
+    FixedAnchor,
     Itinerary,
     MealWindow,
     RankedPlace,
@@ -111,6 +112,7 @@ def _schedule_day(
     start: int,
     end: int,
     travel_min: TravelMinutes,
+    anchors: tuple[FixedAnchor, ...] = (),
 ) -> Itinerary:
     day_trip = Trip(
         city=trip.city,
@@ -119,6 +121,7 @@ def _schedule_day(
         day_start_min=start,
         day_end_min=end,
         places=tuple(day_places),
+        anchors=anchors,
     )
     return schedule(day_trip, travel_min)
 
@@ -131,6 +134,7 @@ def _schedule_day_within_cap(
     end: int,
     cap: int,
     travel_min: TravelMinutes,
+    anchors: tuple[FixedAnchor, ...] = (),
 ) -> tuple[Day, list[RankedPlace]]:
     """Schedule a day, then trim to the walking cap by repeatedly dropping the
     stop whose removal most reduces total travel. Returns the day and the places
@@ -138,22 +142,28 @@ def _schedule_day_within_cap(
 
     The cap is a soft target: trimming always leaves at least one stop, so a day
     whose only reachable place sits beyond the cap keeps that single stop rather
-    than emptying the day."""
+    than emptying the day. Anchors are passed to every schedule call and are never
+    in the droppable set, so the cap trims flexible stops around a fixed event but
+    never the event itself."""
     active = list(day_places)
-    result = _schedule_day(active, trip, day_date, start, end, travel_min)
+    result = _schedule_day(active, trip, day_date, start, end, travel_min, anchors)
 
-    while result.days[0].total_travel_min() > cap and len(result.days[0].stops) > 1:
+    while result.days[0].total_travel_min() > cap:
         scheduled_ids = {s.place.id for s in result.days[0].stops}
+        # Only flexible places are droppable; anchors are fixed commitments. Never
+        # empty an anchorless day (keep ≥1 stop); a day with anchors may shed every
+        # flexible stop and still stay non-empty.
+        droppable = [rp for rp in active if rp.place.id in scheduled_ids]
+        if len(droppable) <= (0 if anchors else 1):
+            break
         best: tuple[int, list[RankedPlace], Itinerary] | None = None
-        for rp in active:
-            if rp.place.id not in scheduled_ids:
-                continue
+        for rp in droppable:
             trial = [x for x in active if x.place.id != rp.place.id]
-            trial_result = _schedule_day(trial, trip, day_date, start, end, travel_min)
+            trial_result = _schedule_day(trial, trip, day_date, start, end, travel_min, anchors)
             total = trial_result.days[0].total_travel_min()
             if best is None or total < best[0]:
                 best = (total, trial, trial_result)
-        if best is None:  # unreachable: the loop guard guarantees a scheduled stop
+        if best is None:  # unreachable: droppable is non-empty past the guard above
             raise RuntimeError("walking-cap trim found no scheduled stop to drop")
         _, active, result = best
 
@@ -186,8 +196,10 @@ def schedule_trip(trip: Trip, travel_min: TravelMinutes) -> Itinerary:
             day_places = _apply_meals(day_places, trip.meal_windows)
         start, end = windows[index]
         day_date = trip.start_date + timedelta(days=index)
+        # M3 anchors are single-day commitments (no date); they ride on day 0.
+        day_anchors = trip.anchors if index == 0 else ()
         day, day_unscheduled = _schedule_day_within_cap(
-            day_places, trip, day_date, start, end, cap, travel_min
+            day_places, trip, day_date, start, end, cap, travel_min, day_anchors
         )
         days.append(day)
         # Report unscheduled places with their original hours, not the meal-clamped
