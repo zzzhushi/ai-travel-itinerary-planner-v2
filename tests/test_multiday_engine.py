@@ -147,9 +147,9 @@ def test_partial_days() -> None:
         assert s.arrive_min >= arrival, "day 1 cannot start before arrival time"
 
     assert last.stops, "last day should schedule something"
-    assert (
-        last.stops[-1].depart_min + last.return_travel_min <= departure
-    ), "last day must be back at lodging by departure time"
+    assert last.stops[-1].depart_min + last.return_travel_min <= departure, (
+        "last day must be back at lodging by departure time"
+    )
 
 
 def test_meal_slots() -> None:

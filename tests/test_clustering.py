@@ -65,9 +65,9 @@ def test_pairwise_threshold_enforced() -> None:
     c = _ranked("C", 0.0, 3.0)  # A→C = 30 min, B→C ≈ 34 min
     clusters = cluster_places((a, b, c), travel_min=_grid_travel, threshold_min=15)
     for cids in [{rp.place.id for rp in cl} for cl in clusters]:
-        assert not (
-            {"B", "C"} <= cids
-        ), "B and C (pairwise ≈ 34 min) must not share a cluster at threshold=15"
+        assert not ({"B", "C"} <= cids), (
+            "B and C (pairwise ≈ 34 min) must not share a cluster at threshold=15"
+        )
 
 
 def test_all_nearby_places_form_one_cluster() -> None:
