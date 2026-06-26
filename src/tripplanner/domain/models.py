@@ -51,6 +51,18 @@ class MealWindow:
 
 
 @dataclass(frozen=True)
+class FixedAnchor:
+    """A pre-committed, fixed-time event (a dinner reservation, a timed museum
+    entry). Unlike a flexible RankedPlace, the scheduler must seat it at exactly
+    `arrival_min` and route everything else around it. Times are minutes since
+    midnight; `arrival_min` has no date — anchors are a single-day concept in M3."""
+
+    place: Place
+    arrival_min: int  # must be AT the place at exactly this time
+    duration_min: int
+
+
+@dataclass(frozen=True)
 class Trip:
     """A trip of one or more consecutive days.
 
@@ -73,6 +85,7 @@ class Trip:
     walking_tolerance: float = 1.0  # <1 tightens spread (less walking); >1 permits more
     plan_meals: bool = False
     meal_windows: tuple[MealWindow, ...] = ()
+    anchors: tuple[FixedAnchor, ...] = ()  # fixed-time commitments (M3: single-day only)
 
 
 @dataclass(frozen=True)
