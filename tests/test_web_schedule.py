@@ -40,7 +40,7 @@ def test_multiday_endpoint_returns_a_routed_plan() -> None:
             _place("D", 38.698, -9.207),
         ],
     }
-    resp = _CLIENT.post("/schedule/multiday", json=body)
+    resp = _CLIENT.post("/schedule", json=body)
     assert resp.status_code == 201
     data = resp.json()
     assert data["feasible"] is True
@@ -51,7 +51,7 @@ def test_multiday_endpoint_returns_a_routed_plan() -> None:
 
 def test_multiday_endpoint_rejects_malformed_body() -> None:
     # Missing required fields → Pydantic 422, not a 500.
-    resp = _CLIENT.post("/schedule/multiday", json={"city": "Lisbon"})
+    resp = _CLIENT.post("/schedule", json={"city": "Lisbon"})
     assert resp.status_code == 422
 
 

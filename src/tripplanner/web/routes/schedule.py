@@ -1,4 +1,4 @@
-"""Schedule routes: POST /schedule and POST /schedule/multiday."""
+"""Schedule route: POST /schedule."""
 
 from __future__ import annotations
 
@@ -71,25 +71,11 @@ class MealWindowIn(BaseModel):
 
 
 class TripRequest(BaseModel):
-    """Request body for POST /schedule (single-day trip)."""
+    """Request body for POST /schedule. num_days=1 (default) is a single-day trip."""
 
     city: str
     start_date: str  # ISO date "YYYY-MM-DD"
-    lodging_name: str
-    lodging_lat: float
-    lodging_lng: float
-    day_start_hhmm: str
-    day_end_hhmm: str
-    places: list[PlaceIn]
-    walking_neighborhood_min: int = 30
-
-
-class MultiDayTripRequest(BaseModel):
-    """Request body for POST /schedule/multiday."""
-
-    city: str
-    start_date: str  # ISO date "YYYY-MM-DD"
-    num_days: int
+    num_days: int = 1
     lodging_name: str
     lodging_lat: float
     lodging_lng: float
@@ -105,7 +91,7 @@ class MultiDayTripRequest(BaseModel):
 
 
 class ScheduleResponse(BaseModel):
-    """Response body returned by both schedule endpoints."""
+    """Response body for POST /schedule."""
 
     feasible: bool
     day_view: str
@@ -113,34 +99,12 @@ class ScheduleResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Endpoint
 # ---------------------------------------------------------------------------
 
 
 @router.post("/schedule", status_code=201)
 async def post_schedule(body: TripRequest) -> ScheduleResponse:
-    trip = Trip(
-        city=body.city,
-        start_date=date.fromisoformat(body.start_date),
-        lodging=Lodging(
-            name=body.lodging_name,
-            coord=Coord(lat=body.lodging_lat, lng=body.lodging_lng),
-        ),
-        day_start_min=_hhmm(body.day_start_hhmm),
-        day_end_min=_hhmm(body.day_end_hhmm),
-        places=tuple(p.to_ranked() for p in body.places),
-        walking_neighborhood_min=body.walking_neighborhood_min,
-    )
-    itin = build_schedule(trip)
-    return ScheduleResponse(
-        feasible=itin.is_feasible,
-        day_view=format_itinerary(itin),
-        unscheduled=[rp.place.name for rp in itin.unscheduled],
-    )
-
-
-@router.post("/schedule/multiday", status_code=201)
-async def post_schedule_multiday(body: MultiDayTripRequest) -> ScheduleResponse:
     trip = Trip(
         city=body.city,
         start_date=date.fromisoformat(body.start_date),
