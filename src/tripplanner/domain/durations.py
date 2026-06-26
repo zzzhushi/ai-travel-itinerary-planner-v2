@@ -18,6 +18,9 @@ _CATEGORY_DEFAULTS: dict[str, int] = {
 
 _FALLBACK_MIN = 60
 
+# Place categories eligible to fill a meal window.
+FOOD_CATEGORIES: frozenset[str] = frozenset({"restaurant"})
+
 
 def resolve_duration_min(ranked: RankedPlace) -> int:
     """Minutes to spend at a place: the per-place override, else the category default."""

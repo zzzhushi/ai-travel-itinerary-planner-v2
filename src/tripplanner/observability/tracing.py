@@ -1,4 +1,4 @@
-"""OpenTelemetry tracing and the `span` context manager (ADR-006).
+"""OpenTelemetry tracing and the `span` context manager.
 
 `span` wraps an operation: it starts an OTel span (so logs inside carry
 trace/span ids) and emits a structured completion log with `duration_ms` and

@@ -1,9 +1,4 @@
-"""FastAPI application (ADR-005).
-
-A per-request correlation-id middleware is not yet wired (the Starlette
-context-propagation caveat makes it more than a one-liner); for now the span
-ensures a correlation id exists.
-"""
+"""FastAPI application."""
 
 from __future__ import annotations
 

@@ -1,1 +1,1 @@
-"""Web delivery — FastAPI app (ADR-005)."""
+"""Web delivery — FastAPI app."""

@@ -52,7 +52,7 @@ def test_respects_hours() -> None:
     # A is only open in the morning, B only in the afternoon: the route must wait for B.
     trip = Trip(
         city="Testville",
-        day=date(2026, 7, 1),
+        start_date=date(2026, 7, 1),
         lodging=_LODGING,
         day_start_min=_hm(9),
         day_end_min=_hm(18),
@@ -63,7 +63,7 @@ def test_respects_hours() -> None:
     )
     itin = schedule(trip, _grid_travel)
     assert itin.is_feasible
-    for stop in itin.day.stops:
+    for stop in itin.days[0].stops:
         assert stop.arrive_min >= stop.place.opens_min, f"{stop.place.id} arrived before opening"
         assert stop.depart_min <= stop.place.closes_min, f"{stop.place.id} left after closing"
 
@@ -72,18 +72,18 @@ def test_lodging_commute() -> None:
     # One place 5 units away → 50 min each way; both legs must be accounted for.
     trip = Trip(
         city="Testville",
-        day=date(2026, 7, 1),
+        start_date=date(2026, 7, 1),
         lodging=_LODGING,
         day_start_min=_hm(9),
         day_end_min=_hm(18),
         places=(_ranked("A", x=5, opens=_hm(9), closes=_hm(18), duration=30),),
     )
     itin = schedule(trip, _grid_travel)
-    first = itin.day.stops[0]
+    first = itin.days[0].stops[0]
     assert first.travel_from_prev_min == 50  # lodging -> first stop
-    assert itin.day.return_travel_min == 50  # last stop -> lodging
+    assert itin.days[0].return_travel_min == 50  # last stop -> lodging
     assert first.arrive_min >= trip.day_start_min + 50  # couldn't arrive before travelling there
-    assert first.depart_min + itin.day.return_travel_min <= trip.day_end_min  # home in time
+    assert first.depart_min + itin.days[0].return_travel_min <= trip.day_end_min  # home in time
 
 
 def test_reduces_travel() -> None:
@@ -95,7 +95,7 @@ def test_reduces_travel() -> None:
     )
     trip = Trip(
         city="Testville",
-        day=date(2026, 7, 1),
+        start_date=date(2026, 7, 1),
         lodging=_LODGING,
         day_start_min=_hm(9),
         day_end_min=_hm(18),
@@ -107,7 +107,7 @@ def test_reduces_travel() -> None:
 
     itin = schedule(trip, _grid_travel)
     assert itin.is_feasible
-    assert itin.day.total_travel_min() < naive_total
+    assert itin.days[0].total_travel_min() < naive_total
 
 
 def test_overfull_day_flagged() -> None:
@@ -117,7 +117,7 @@ def test_overfull_day_flagged() -> None:
     )
     trip = Trip(
         city="Testville",
-        day=date(2026, 7, 1),
+        start_date=date(2026, 7, 1),
         lodging=_LODGING,
         day_start_min=_hm(9),
         day_end_min=_hm(10),
@@ -126,6 +126,8 @@ def test_overfull_day_flagged() -> None:
     itin = schedule(trip, _grid_travel)
     assert not itin.is_feasible
     assert itin.unscheduled, "over-full day must report unscheduled places"
-    assert len(itin.day.stops) + len(itin.unscheduled) == len(places)  # nothing dropped silently
-    for stop in itin.day.stops:
+    assert len(itin.days[0].stops) + len(itin.unscheduled) == len(
+        places
+    )  # nothing dropped silently
+    for stop in itin.days[0].stops:
         assert stop.depart_min <= stop.place.closes_min

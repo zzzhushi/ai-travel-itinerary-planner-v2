@@ -1,0 +1,30 @@
+{
+  "city": "Lisbon",
+  "start_date": "2026-07-01",
+  "num_days": 3,
+  "lodging_name": "Hotel Bairro Alto",
+  "lodging_lat": 38.7139,
+  "lodging_lng": -9.1434,
+  "arrival_hhmm": "13:00",
+  "departure_hhmm": "15:00",
+  "day_start_hhmm": "09:00",
+  "day_end_hhmm": "19:00",
+  "walking_tolerance": 1.0,
+  "plan_meals": true,
+  "meal_windows": [
+    { "name": "lunch", "earliest_hhmm": "12:30", "latest_hhmm": "14:30", "duration_min": 60 }
+  ],
+  "places": [
+    { "id": "praca-comercio", "name": "Praca do Comercio", "category": "landmark", "lat": 38.7077, "lng": -9.1366, "opens_hhmm": "09:00", "closes_hhmm": "20:00" },
+    { "id": "se-cathedral", "name": "Se Cathedral", "category": "sight", "lat": 38.7099, "lng": -9.1331, "opens_hhmm": "09:00", "closes_hhmm": "19:00" },
+    { "id": "casa-baixa", "name": "Restaurante Baixa", "category": "restaurant", "lat": 38.7100, "lng": -9.1400, "opens_hhmm": "11:00", "closes_hhmm": "23:00" },
+
+    { "id": "castelo-sao-jorge", "name": "Castelo de Sao Jorge", "category": "landmark", "lat": 38.7139, "lng": -9.1334, "opens_hhmm": "09:00", "closes_hhmm": "21:00" },
+    { "id": "miradouro-santa-luzia", "name": "Miradouro de Santa Luzia", "category": "viewpoint", "lat": 38.7117, "lng": -9.1305, "opens_hhmm": "08:00", "closes_hhmm": "22:00" },
+    { "id": "tasca-alfama", "name": "Tasca de Alfama", "category": "restaurant", "lat": 38.7120, "lng": -9.1290, "opens_hhmm": "12:00", "closes_hhmm": "23:00" },
+
+    { "id": "jeronimos", "name": "Mosteiro dos Jeronimos", "category": "landmark", "lat": 38.6979, "lng": -9.2065, "opens_hhmm": "10:00", "closes_hhmm": "18:00" },
+    { "id": "torre-belem", "name": "Torre de Belem", "category": "landmark", "lat": 38.6916, "lng": -9.2160, "opens_hhmm": "10:00", "closes_hhmm": "18:00" },
+    { "id": "pasteis-belem", "name": "Pasteis de Belem", "category": "cafe", "lat": 38.6975, "lng": -9.2030, "opens_hhmm": "08:00", "closes_hhmm": "23:00", "duration_min": 45 }
+  ]
+}
