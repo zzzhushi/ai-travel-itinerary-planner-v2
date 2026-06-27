@@ -24,6 +24,9 @@ class Place:
     coord: Coord
     opens_min: int  # minutes since midnight
     closes_min: int
+    # Weekdays the place is fully closed (Mon=0..Sun=6, per date.weekday()). Empty
+    # means open every day. Used to detect a place closed on all of a trip's days.
+    closed_weekdays: frozenset[int] = frozenset()
 
 
 @dataclass(frozen=True)
