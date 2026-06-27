@@ -36,6 +36,7 @@ def _parse_place(p: dict[str, Any]) -> RankedPlace:
             opens_min=_hhmm(p["opens_hhmm"]),
             closes_min=_hhmm(p["closes_hhmm"]),
         ),
+        rating=p.get("rating", 3),
         duration_override_min=p.get("duration_min"),
     )
 
@@ -75,6 +76,25 @@ def _cmd_schedule(fixture_path: str) -> None:
     print(format_itinerary(build_schedule(trip)))
 
 
+def _cmd_rate(fixture_path: str, place_id: str, rating: int, duration: int | None) -> None:
+    """Capture a 1-5 rating (and optional duration override) for one place by
+    writing it back into the fixture, so a later `schedule` run picks it up. This
+    is the fixture-based stand-in for the persisted PUT /ratings operation."""
+    if not 1 <= rating <= 5:
+        raise SystemExit(f"rating must be 1-5, got {rating}")
+    path = Path(fixture_path)
+    data = json.loads(path.read_text())
+    for place in data["places"]:
+        if place["id"] == place_id:
+            place["rating"] = rating
+            if duration is not None:
+                place["duration_min"] = duration
+            path.write_text(json.dumps(data, indent=2) + "\n")
+            print(f"Rated {place_id}: {rating}/5" + (f", {duration} min" if duration else ""))
+            return
+    raise SystemExit(f"place '{place_id}' not found in {fixture_path}")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tripplanner", description="AI travel itinerary planner")
     parser.add_argument("--version", action="version", version=f"tripplanner {__version__}")
@@ -83,6 +103,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "schedule", help="Route a trip (single- or multi-day) from a JSON fixture"
     )
     sched.add_argument("fixture", help="path to trip JSON file")
+
+    rate = sub.add_parser("rate", help="Set a 1-5 rating (and optional duration) for a place")
+    rate.add_argument("fixture", help="path to trip JSON file")
+    rate.add_argument("--place", required=True, help="place id to rate")
+    rate.add_argument("--rating", type=int, required=True, help="rating 1-5")
+    rate.add_argument("--duration", type=int, help="optional duration override in minutes")
     return parser
 
 
@@ -91,5 +117,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     if args.command == "schedule":
         _cmd_schedule(args.fixture)
+    elif args.command == "rate":
+        _cmd_rate(args.fixture, args.place, args.rating, args.duration)
     else:
         parser.print_help()

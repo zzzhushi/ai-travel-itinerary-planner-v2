@@ -5,10 +5,12 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from tripplanner.application.build_schedule import build_schedule
 from tripplanner.application.presenters import format_itinerary
+from tripplanner.domain.feasibility import check_feasibility
 from tripplanner.domain.models import (
     Coord,
     Lodging,
@@ -17,6 +19,7 @@ from tripplanner.domain.models import (
     RankedPlace,
     Trip,
 )
+from tripplanner.services.travel import haversine_minutes
 
 router = APIRouter()
 
@@ -46,6 +49,7 @@ class PlaceIn(BaseModel):
     opens_hhmm: str
     closes_hhmm: str
     duration_min: int | None = None
+    rating: int = 3  # 1-5; influences which places survive a capacity trim
 
     def to_ranked(self) -> RankedPlace:
         return RankedPlace(
@@ -57,6 +61,7 @@ class PlaceIn(BaseModel):
                 opens_min=_hhmm(self.opens_hhmm),
                 closes_min=_hhmm(self.closes_hhmm),
             ),
+            rating=self.rating,
             duration_override_min=self.duration_min,
         )
 
@@ -103,8 +108,8 @@ class ScheduleResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.post("/schedule", status_code=201)
-async def post_schedule(body: TripRequest) -> ScheduleResponse:
+@router.post("/schedule", status_code=201, response_model=None)
+async def post_schedule(body: TripRequest) -> ScheduleResponse | JSONResponse:
     trip = Trip(
         city=body.city,
         start_date=date.fromisoformat(body.start_date),
@@ -131,6 +136,23 @@ async def post_schedule(body: TripRequest) -> ScheduleResponse:
             for mw in body.meal_windows
         ),
     )
+    # Feasibility gate: an over-committed, anchor-conflicting, or closed-on-all-days
+    # request is a first-class 409 pushback (with the numbers), not a built schedule.
+    report = check_feasibility(trip, haversine_minutes)
+    if not report.feasible:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "feasible": False,
+                "requested": report.requested,
+                "fits": report.fits,
+                "over_by": report.over_by,
+                "anchor_conflicts": list(report.anchor_conflicts),
+                "closed_all_days": list(report.closed_all_days),
+                "suggestions": list(report.suggestions),
+            },
+        )
+
     itin = build_schedule(trip)
     return ScheduleResponse(
         feasible=itin.is_feasible,

@@ -104,16 +104,20 @@ def test_post_schedule_returns_201_with_itinerary() -> None:
     assert isinstance(body["unscheduled"], list)
 
 
-def test_post_schedule_unfeasible_trip_returns_201_with_unscheduled() -> None:
-    """A trip whose only place is closed all day is returned feasible=False."""
+def test_post_schedule_infeasible_trip_returns_409_pushback() -> None:
+    """M3 contract change: an infeasible request (here, no place fits its hours) is
+    a 409 pushback carrying the numbers — not a 201 with everything unscheduled, as
+    M1 returned. See docs/api-contract.md operation 7."""
     from tripplanner.web.app import app
 
     data = _fixture_data()
-    # Close every place before the day starts so none can be scheduled
+    # Close every place before the day starts so none can be scheduled.
     for p in data["places"]:
         p["opens_hhmm"] = "23:00"
         p["closes_hhmm"] = "23:30"
     resp = TestClient(app).post("/schedule", json=data)
-    assert resp.status_code == 201
-    assert resp.json()["feasible"] is False
-    assert len(resp.json()["unscheduled"]) == len(data["places"])
+    assert resp.status_code == 409
+    body = resp.json()
+    assert body["feasible"] is False
+    assert body["over_by"] == body["requested"] - body["fits"] > 0
+    assert body["suggestions"], "the pushback must offer the user a way forward"
