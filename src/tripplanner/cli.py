@@ -13,6 +13,7 @@ from tripplanner.application.build_schedule import build_schedule
 from tripplanner.application.presenters import format_itinerary
 from tripplanner.domain.models import (
     Coord,
+    FixedAnchor,
     Lodging,
     MealWindow,
     Place,
@@ -38,6 +39,21 @@ def _parse_place(p: dict[str, Any]) -> RankedPlace:
         ),
         rating=p.get("rating", 3),
         duration_override_min=p.get("duration_min"),
+    )
+
+
+def _parse_anchor(a: dict[str, Any]) -> FixedAnchor:
+    return FixedAnchor(
+        place=Place(
+            id=a["id"],
+            name=a["name"],
+            category=a["category"],
+            coord=Coord(lat=a["lat"], lng=a["lng"]),
+            opens_min=_hhmm(a["opens_hhmm"]),
+            closes_min=_hhmm(a["closes_hhmm"]),
+        ),
+        arrival_min=_hhmm(a["arrival_hhmm"]),
+        duration_min=a["duration_min"],
     )
 
 
@@ -72,6 +88,7 @@ def _cmd_schedule(fixture_path: str) -> None:
         walking_tolerance=data.get("walking_tolerance", 1.0),
         plan_meals=data.get("plan_meals", False),
         meal_windows=meal_windows,
+        anchors=tuple(_parse_anchor(a) for a in data.get("anchors", [])),
     )
     print(format_itinerary(build_schedule(trip)))
 

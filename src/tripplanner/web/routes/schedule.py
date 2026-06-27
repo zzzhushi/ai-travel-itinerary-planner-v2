@@ -13,6 +13,7 @@ from tripplanner.application.presenters import format_itinerary
 from tripplanner.domain.feasibility import check_feasibility
 from tripplanner.domain.models import (
     Coord,
+    FixedAnchor,
     Lodging,
     MealWindow,
     Place,
@@ -75,6 +76,35 @@ class MealWindowIn(BaseModel):
     duration_min: int
 
 
+class AnchorIn(BaseModel):
+    """A fixed-time commitment (dinner reservation, timed entry) the schedule must
+    route around — seated at exactly arrival_hhmm for duration_min minutes."""
+
+    id: str
+    name: str
+    category: str
+    lat: float
+    lng: float
+    opens_hhmm: str
+    closes_hhmm: str
+    arrival_hhmm: str
+    duration_min: int
+
+    def to_anchor(self) -> FixedAnchor:
+        return FixedAnchor(
+            place=Place(
+                id=self.id,
+                name=self.name,
+                category=self.category,
+                coord=Coord(lat=self.lat, lng=self.lng),
+                opens_min=_hhmm(self.opens_hhmm),
+                closes_min=_hhmm(self.closes_hhmm),
+            ),
+            arrival_min=_hhmm(self.arrival_hhmm),
+            duration_min=self.duration_min,
+        )
+
+
 class TripRequest(BaseModel):
     """Request body for POST /schedule. num_days=1 (default) is a single-day trip."""
 
@@ -93,6 +123,7 @@ class TripRequest(BaseModel):
     walking_neighborhood_min: int = 30
     plan_meals: bool = False
     meal_windows: list[MealWindowIn] = []
+    anchors: list[AnchorIn] = []
 
 
 class ScheduleResponse(BaseModel):
@@ -135,6 +166,7 @@ async def post_schedule(body: TripRequest) -> ScheduleResponse | JSONResponse:
             )
             for mw in body.meal_windows
         ),
+        anchors=tuple(a.to_anchor() for a in body.anchors),
     )
     # Feasibility gate: an over-committed, anchor-conflicting, or closed-on-all-days
     # request is a first-class 409 pushback (with the numbers), not a built schedule.

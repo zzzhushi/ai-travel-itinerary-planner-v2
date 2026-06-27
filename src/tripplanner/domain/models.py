@@ -32,7 +32,7 @@ class Place:
 @dataclass(frozen=True)
 class RankedPlace:
     place: Place
-    rating: int = 3  # 1-5; currently unused by the router (priority routing not yet implemented)
+    rating: int = 3  # 1-5; under a capacity trim the lowest-rated places are dropped first
     duration_override_min: int | None = None
 
 

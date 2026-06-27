@@ -73,7 +73,10 @@ def check_feasibility(trip: Trip, travel_min: TravelMinutes) -> FeasibilityRepor
     itin = schedule_trip(replace(trip, places=visitable), travel_min)
     scheduled_ids = {s.place.id for day in itin.days for s in day.stops}
     fits = sum(1 for rp in trip.places if rp.place.id in scheduled_ids)
-    over_by = requested - fits
+    # over_by is the *capacity* deficit among visitable places — closed-on-all-days
+    # places are reported separately (a swap, not "drop one or add days"), so they
+    # must not inflate this count.
+    over_by = len(visitable) - fits
 
     feasible = over_by == 0 and not anchor_conflicts and not closed_all_days
     suggestions = render_suggestions(
