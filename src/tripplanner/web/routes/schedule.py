@@ -5,18 +5,22 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from tripplanner.application.build_schedule import build_schedule
 from tripplanner.application.presenters import format_itinerary
+from tripplanner.domain.feasibility import check_feasibility
 from tripplanner.domain.models import (
     Coord,
+    FixedAnchor,
     Lodging,
     MealWindow,
     Place,
     RankedPlace,
     Trip,
 )
+from tripplanner.services.travel import haversine_minutes
 
 router = APIRouter()
 
@@ -46,6 +50,7 @@ class PlaceIn(BaseModel):
     opens_hhmm: str
     closes_hhmm: str
     duration_min: int | None = None
+    rating: int = 3  # 1-5; influences which places survive a capacity trim
 
     def to_ranked(self) -> RankedPlace:
         return RankedPlace(
@@ -57,6 +62,7 @@ class PlaceIn(BaseModel):
                 opens_min=_hhmm(self.opens_hhmm),
                 closes_min=_hhmm(self.closes_hhmm),
             ),
+            rating=self.rating,
             duration_override_min=self.duration_min,
         )
 
@@ -68,6 +74,35 @@ class MealWindowIn(BaseModel):
     earliest_hhmm: str
     latest_hhmm: str
     duration_min: int
+
+
+class AnchorIn(BaseModel):
+    """A fixed-time commitment (dinner reservation, timed entry) the schedule must
+    route around — seated at exactly arrival_hhmm for duration_min minutes."""
+
+    id: str
+    name: str
+    category: str
+    lat: float
+    lng: float
+    opens_hhmm: str
+    closes_hhmm: str
+    arrival_hhmm: str
+    duration_min: int
+
+    def to_anchor(self) -> FixedAnchor:
+        return FixedAnchor(
+            place=Place(
+                id=self.id,
+                name=self.name,
+                category=self.category,
+                coord=Coord(lat=self.lat, lng=self.lng),
+                opens_min=_hhmm(self.opens_hhmm),
+                closes_min=_hhmm(self.closes_hhmm),
+            ),
+            arrival_min=_hhmm(self.arrival_hhmm),
+            duration_min=self.duration_min,
+        )
 
 
 class TripRequest(BaseModel):
@@ -88,6 +123,7 @@ class TripRequest(BaseModel):
     walking_neighborhood_min: int = 30
     plan_meals: bool = False
     meal_windows: list[MealWindowIn] = []
+    anchors: list[AnchorIn] = []
 
 
 class ScheduleResponse(BaseModel):
@@ -103,8 +139,8 @@ class ScheduleResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.post("/schedule", status_code=201)
-async def post_schedule(body: TripRequest) -> ScheduleResponse:
+@router.post("/schedule", status_code=201, response_model=None)
+async def post_schedule(body: TripRequest) -> ScheduleResponse | JSONResponse:
     trip = Trip(
         city=body.city,
         start_date=date.fromisoformat(body.start_date),
@@ -130,7 +166,25 @@ async def post_schedule(body: TripRequest) -> ScheduleResponse:
             )
             for mw in body.meal_windows
         ),
+        anchors=tuple(a.to_anchor() for a in body.anchors),
     )
+    # Feasibility gate: an over-committed, anchor-conflicting, or closed-on-all-days
+    # request is a first-class 409 pushback (with the numbers), not a built schedule.
+    report = check_feasibility(trip, haversine_minutes)
+    if not report.feasible:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "feasible": False,
+                "requested": report.requested,
+                "fits": report.fits,
+                "over_by": report.over_by,
+                "anchor_conflicts": list(report.anchor_conflicts),
+                "closed_all_days": list(report.closed_all_days),
+                "suggestions": list(report.suggestions),
+            },
+        )
+
     itin = build_schedule(trip)
     return ScheduleResponse(
         feasible=itin.is_feasible,

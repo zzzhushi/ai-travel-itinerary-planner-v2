@@ -156,8 +156,15 @@ def _schedule_day_within_cap(
         droppable = [rp for rp in active if rp.place.id in scheduled_ids]
         if len(droppable) <= (0 if anchors else 1):
             break
+        # Under capacity pressure, shed the least-loved places first: consider only
+        # the lowest-rated scheduled stops, then among those drop whichever removal
+        # most cuts travel. Equal ratings (every place defaults to 3) fall straight
+        # through to the travel-minimizing choice — so this is rating-aware without
+        # changing behavior when the caller hasn't rated anything.
+        min_rating = min(rp.rating for rp in droppable)
+        candidates = [rp for rp in droppable if rp.rating == min_rating]
         best: tuple[int, list[RankedPlace], Itinerary] | None = None
-        for rp in droppable:
+        for rp in candidates:
             trial = [x for x in active if x.place.id != rp.place.id]
             trial_result = _schedule_day(trial, trip, day_date, start, end, travel_min, anchors)
             total = trial_result.days[0].total_travel_min()

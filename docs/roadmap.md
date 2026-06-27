@@ -97,6 +97,7 @@ Status: draft (awaiting slicing approval) · Date: 2026-06-12
 - [ ] editing a rating / swapping a place and rebuilding yields a new result — `test_resolve_after_edit`
 **Validation:** `python run_cli.py rate ...` then `schedule`; `curl -XPOST .../schedule` returns 409 with pushback body on the over-committed fixture.
 **Architecture note:** the re-solve loop is the pure engine called again with edited inputs — the deterministic core that M7's NL layer drives.
+**Deferred to M4:** the stateful `PUT /trips/{id}/ratings` HTTP endpoint (api-contract op 6) needs a persisted trip store, which doesn't exist in fixture-only M3. M3 delivers rating capture via the CLI `rate` command + the web `PlaceIn.rating` field; the by-id PUT lands with persistence in M4 (task 5).
 
 | id | task | complexity | model | why | depends_on |
 |---|---|---|---|---|---|
@@ -104,7 +105,7 @@ Status: draft (awaiting slicing approval) · Date: 2026-06-12
 | 2 | anchor infeasibility detection | complex | opus | feasibility logic | 1 |
 | 3 | capacity feasibility check + closed-on-all-days detection | complex | opus | deterministic check | M2 |
 | 4 | templated pushback message (numbers + suggestions) | standard | sonnet | formatting, no LLM | 3 |
-| 5 | CLI rating capture (1–5 + duration override) + `PUT /ratings` | standard | sonnet | mimic user input | M2 |
+| 5 | CLI rating capture (1–5 + duration override) + web `rating` field | standard | sonnet | mimic user input | M2 |
 | 6 | deterministic edit + re-solve (rating/param/swap → rebuild) | standard | sonnet | re-run engine | 5 |
 | 7 | tests (anchor, infeasible, pushback, closed-all-days, re-solve) | complex | opus | correctness | 1,2,3,6 |
 
@@ -127,7 +128,7 @@ Status: draft (awaiting slicing approval) · Date: 2026-06-12
 | 2 | repository: connect, init/migrate, CRUD trips/interests/ratings/anchors | standard | sonnet | repo pattern | 1 |
 | 3 | schedule_versions: save, list, keep-last-3, revert | standard | sonnet | versioning | 2 |
 | 4 | place_cache read/write + TTL eviction (no coords durable) | standard | sonnet | ADR-001 compliance | 1 |
-| 5 | save/open/revert use-cases + CLI + `POST/GET /trips`, `/versions`, `/revert` | standard | sonnet | wire | 2,3 |
+| 5 | save/open/revert use-cases + CLI + `POST/GET /trips`, `/versions`, `/revert`, `PUT /trips/{id}/ratings` (deferred from M3) | standard | sonnet | wire | 2,3 |
 | 6 | web UI shell: base templates, htmx setup, error→page mapping | standard | sonnet | one-time UI foundation | M0 |
 | 7 | trip create / list / open pages (htmx) | standard | sonnet | first real UI | 5,6 |
 | 8 | persistence tests (round-trip, version cap+revert, cache TTL, no-coords) | standard | sonnet | correctness | 2,3,4 |
