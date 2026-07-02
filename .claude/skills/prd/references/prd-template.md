@@ -34,16 +34,22 @@ For each: what happens when it's down (ties to graceful degradation later).
 ## Hard constraints
 Cost ceilings, privacy requirements, "must run locally", latency bounds.
 
+## Top risks & assumptions
+At most 3 bullets: the assumptions most likely to sink the project if wrong,
+each with how we'd find out early. Feeds the milestone stage's order-by-risk.
+
 ## Open questions
 Unresolved items, each with an owner (user decision vs research task).
 
 ## Decisions log
-One-line Q&A pairs from the interview that explain WHY requirements are what
-they are. Decisions where a real alternative was weighed link to their ADR:
-| decision | why | ADR |
-Future sessions read this instead of re-asking.
+Entries from the interview that explain WHY requirements are what they are.
+Each records: the decision · alternatives considered · why this one won ·
+what would change it. Genuine forks link to their ADR:
+| decision | alternatives | why | would change if | ADR |
+Future sessions read this instead of re-asking — a conclusion without its
+reasoning gets re-litigated or blindly obeyed.
 ```
 
 Notes for the author:
-- Success criteria and non-goals are the two sections later stages lean on most; spend interview time accordingly.
+- Success criteria and non-goals are the two sections later stages lean on most; spend interview time accordingly. Phrase each success criterion so a later milestone exit criterion can test it.
 - The decisions log is what makes this durable across cold-start sessions — record reasoning, not just conclusions.
