@@ -4,8 +4,8 @@
 |---|---|
 | **Status** | draft — open for design review |
 | **Date** | 2026-07-02 |
-| **Author** | Claude (skills pipeline), for Shirley's review |
-| **Reviewers / sign-off** | Shirley — ☐ approved ☐ approved-with-changes |
+| **Author** | Claude (skills pipeline), for maintainer review |
+| **Reviewers / sign-off** | zzzhushi — ☐ approved ☐ approved-with-changes |
 | **Companions** | PRD [`docs/prd.md`](prd.md) (problem space) · API [`docs/api-contract.md`](api-contract.md) · Standards [`docs/engineering-standards.md`](engineering-standards.md) · ADRs [`docs/decisions/`](decisions/README.md) · Debt [`docs/debt.md`](debt.md) |
 
 **How to review this doc.** §8 (Trade-offs & alternatives) and §13 (Risks / open questions) are the discussion generators — challenge the matrices' scores and the rejected options' whys. §4–§7 are the proposal; if a component table row or flow looks wrong, that's a review finding. Outcomes land in §14 (Review log); architecture-level changes also get an ADR.
@@ -220,7 +220,7 @@ Core pillars for every matrix, per the engineering goals: **Determinism/testabil
 
 ## 9. Production readiness & operations
 
-Deployment model today: **single-user local app** (uv-managed venv, `run_cli.py` / `uvicorn`). "Production" = Shirley's machine and data she'd hate to lose. What that requires now, and the delta if it were ever hosted:
+Deployment model today: **single-user local app** (uv-managed venv, `run_cli.py` / `uvicorn`). "Production" = the operator's machine and data they'd hate to lose. What that requires now, and the delta if it were ever hosted:
 
 | Concern | Now (local, single-user) | Hosted delta (explicit non-goal — recorded so the boundary is a decision) |
 |---|---|---|
