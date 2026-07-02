@@ -47,7 +47,15 @@ The doc is **living**: a milestone that shifts architecture updates it in the sa
 
 ## Task metadata (the routing classifier — workers never self-assess)
 
-Each task carries `complexity` (mechanical | standard | complex), `executor` (local | opus), `why`, `depends_on`. Mechanical (boilerplate/config following a pattern) and standard (a new feature copying an established pattern, fully specified) → **local model** (Ollama; cloud sonnet/haiku fallback if it's unavailable), always behind a mandatory top-model review before commit. Complex (novel algorithm, concurrency, security surface, or ANY ambiguity) → **opus + extended thinking**, regardless of size. **Routability test:** route to local only if the task's failing test could be written right now; otherwise it's complex — fix the spec, don't route down. (Legacy roadmap rows that say haiku/sonnet map to `local`; opus maps to `opus`.)
+Each task carries `complexity` (mechanical | standard | complex), `executor`, `why`, `depends_on`. The executor names the exact tier so the orchestrator never burns top-model tokens on work a cheaper tier does equally well — and never routes ambiguity down to save tokens:
+
+| complexity | executor | cloud fallback (Ollama down) |
+|---|---|---|
+| mechanical — boilerplate/config following a pattern | `local` | haiku subagent |
+| standard — new feature copying an established pattern, fully specified | `local` | sonnet subagent |
+| complex — novel algorithm, concurrency, security surface, or ANY ambiguity | `opus` inline + extended thinking, regardless of size | — |
+
+Every local/fallback run sits behind the mandatory top-model diff review before commit (implement-task step 5) — the review is where top-model tokens are spent on cheap-tier work, deliberately. **Routability test:** route to local only if the task's failing test could be written right now; otherwise it's complex — fix the spec, don't route down. (Legacy roadmap rows that say haiku/sonnet map to `local`; opus maps to `opus`.)
 
 ## Output
 
