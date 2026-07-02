@@ -5,14 +5,15 @@ Work the **common core** first, then the section for the classified project type
 ## Common core (every project type)
 
 1. **The triggering moment** — "Walk me through the last time you actually needed this. What did you do instead?" (Grounds everything in a real scenario; kills imagined requirements.)
-2. **Audience size** — just the user, or others? Changes auth, polish bar, hosting, everything.
-3. **Core flows/invocations** — the 2–5 journeys or call paths. For each: input, output, what "good" looks like.
-4. **Data lifetime** — does anything persist? Across devices/runs? Deleted when?
-5. **External services & cost ceilings** — per-use costs (LLM calls, APIs)? "What's your monthly ceiling?" produces a real constraint.
-6. **Failure behavior** — for each external dependency: when it's down, what should the consumer experience?
-7. **Privacy** — does the data include anything the user wouldn't hand to a third-party API?
-8. **Success metric** — "Three months from now, how do you know this was worth building?"
-9. **Non-goals sweep** — at the end: "Here's what I understood is OUT of scope: ... confirm?"
+2. **The existence check** — "What exists today that does 80% of this? Why build rather than adopt or wrap it?" (Recommending not-building is a valid outcome — and far cheaper here than at milestone 4.)
+3. **Audience size** — just the user, or others? Changes auth, polish bar, hosting, everything.
+4. **Core flows/invocations** — the 2–5 journeys or call paths. For each: input, output, what "good" looks like.
+5. **Data lifetime** — does anything persist? Across devices/runs? Deleted when?
+6. **External services & cost ceilings** — per-use costs (LLM calls, APIs)? "What's your monthly ceiling?" produces a real constraint.
+7. **Failure behavior** — for each external dependency: when it's down, what should the consumer experience?
+8. **Privacy** — does the data include anything the user wouldn't hand to a third-party API?
+9. **Success metric** — "Three months from now, how do you know this was worth building?" Phrase each agreed criterion so a later milestone exit criterion can test it.
+10. **Non-goals sweep** — at the end: "Here's what I understood is OUT of scope: ... confirm?"
 
 ## Product (humans use it)
 
@@ -45,12 +46,30 @@ Work the **common core** first, then the section for the classified project type
 - **Trigger & schedule** — manual, cron, event? What if two instances run concurrently?
 - **Failure notification** — who finds out it silently stopped working, and how long until they notice?
 
+## Lenses (rotate through these when grilling a requirement or decision)
+
+Each is one question that surfaces what forward questioning misses. Use them at step 5 of the protocol, and to source the "three more questions".
+
+- **Pre-mortem** — "It's 3 months in and this failed. Why?"
+- **Pre-parade** — its mirror: "It wildly succeeded — what did we get right?" (reveals what actually matters vs. what's defensive)
+- **Steelman the opposite** — "Make the best case that we shouldn't build this."
+- **Reversibility** — "Which of these choices is expensive to undo?" (those get the scrutiny; the rest get defaults)
+- **Inversion** — "What would *guarantee* this fails?"
+- **Do-nothing baseline** — "What happens if we build nothing?" (the null hypothesis; pairs with the existence check)
+- **10x / 10%** — "What breaks at 10× usage? What survives at 10% of the budget?" (finds the load-bearing requirements)
+- **Second-order effects** — "If this works, what new problem does it create?"
+- **Trade-off forcing** — "Speed, cost, quality — rank them; you get two."
+- **Chesterton's fence** (feature mode) — "This existing behavior looks wrong — why might it be intentional?" (stops confident deletion of load-bearing quirks)
+
 ## Question craft
 
 - **Depth-first beats breadth-first.** Resolving one topic fully produces requirements; ten half-answered topics produce assumptions.
-- **Offer options when the space is enumerable** (AskUserQuestion with 2–4 options + trade-offs); **ask open when options would anchor**.
+- **Every question carries a recommendation** — a concrete starting point the user reacts to ("I'd default to X because Y — does that hold?"). Reacting is easier and more revealing than generating.
+- **Offer options when the space is enumerable** (AskUserQuestion with 2–4 options + trade-offs, recommendation first); **ask open when options would anchor**.
 - **Probe stated requirements with consequences, not "why".** "If we cut X, what breaks?" gets better data than "why do you want X?".
 - **Contradiction protocol:** restate both statements verbatim, ask which wins. Never average them.
+- **Hand-waving protocol:** "probably", "we'll figure it out later", "the standard way" — stop, pin it down or park it in Open Questions with an owner. Never record vagueness as a requirement.
+- **Three-more rule:** when you feel ready to draft, ask three more questions (pull from unused lenses). Feeling done is a surface-understanding signal.
 - **Research move:** when the user says "I don't know, what's normal?" — research 2–3 real products/tools, summarize how each handles it, recommend one with reasoning. Bursts go to a subagent; cite findings; never present invented behavior as research.
 
 ## Anti-patterns (the failure modes this skill exists to prevent)

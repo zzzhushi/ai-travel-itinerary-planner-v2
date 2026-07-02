@@ -8,6 +8,11 @@ Body:
 ## Goal
 <demo sentence> — from docs/roadmap.md (PRD: docs/prd.md)
 
+## Design
+~10 lines: this slice's technical approach, and what (if anything) it adds or
+changes in docs/design-doc.md. Records only what the project design doc doesn't
+already answer — task-level detail belongs in the sub-issues' design notes.
+
 ## Exit criteria
 - [ ] <observable behavior> — proven by `<test id or command>`
 - [ ] <...>
